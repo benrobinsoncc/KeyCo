@@ -113,12 +113,12 @@ struct AnimatedResponseText: View {
     @State private var displayText: String = ""
 
     var body: some View {
-        AnimateText<ATBlurEffect>($displayText, type: .letters, userInfo: 0.03) // Pass speed as userInfo
+        AnimateText<FastBlurEffect>($displayText, type: .letters) // Use custom fast blur effect
             .font(.system(size: 16))
             .foregroundColor(Color(uiColor: .label))
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .lineLimit(nil) // Allow unlimited lines
             .fixedSize(horizontal: false, vertical: true) // Allow vertical expansion for wrapping
-            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .topLeading) // Top-leading alignment
             .onAppear {
                 if shouldAnimate {
                     // Trigger animation immediately for faster response
