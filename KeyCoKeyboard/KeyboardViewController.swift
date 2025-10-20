@@ -1,4 +1,5 @@
 import UIKit
+import WebKit
 
 class KeyboardViewController: UIInputViewController {
 
@@ -15,7 +16,7 @@ class KeyboardViewController: UIInputViewController {
 
     private enum KeyboardHeight: CGFloat {
         case small = 250
-        case large = 500
+        case large = 650
     }
 
     private var currentMode: KeyboardMode = .home
@@ -25,9 +26,6 @@ class KeyboardViewController: UIInputViewController {
     private var heightConstraint: NSLayoutConstraint!
     private var containerView: UIView!
     private var contentArea: UIView!
-    private var actionBar: UIView!
-    private var backButton: UIButton!
-
     // Content views for each mode
     private var homeView: UIView!
     private var replyView: UIView!
@@ -35,10 +33,15 @@ class KeyboardViewController: UIInputViewController {
     private var googleView: UIView!
     private var chatgptView: UIView!
 
-    private let containerMargin: CGFloat = 8
-    private let cornerRadius: CGFloat = 20
-    private let actionBarHeight: CGFloat = 44
+    private var replyContainer: ActionContainerView!
+    private var rewriteContainer: ActionContainerView!
+    private var googleContainer: ActionContainerView!
+    private var chatgptContainer: ActionContainerView!
+    private var googleWebView: WKWebView?
+    private var currentGoogleURL: URL?
 
+    private let containerMargin: CGFloat = 3
+    private let cornerRadius: CGFloat = 20
     // MARK: - Lifecycle
 
     override func viewDidLoad() {
@@ -63,7 +66,7 @@ class KeyboardViewController: UIInputViewController {
         view.backgroundColor = .clear
 
         // Set initial height
-        heightConstraint = view.heightAnchor.constraint(equalToConstant: currentHeight.rawValue)
+        heightConstraint = view.heightAnchor.constraint(equalToConstant: containerHeight(for: currentHeight))
         heightConstraint.priority = .required
         heightConstraint.isActive = true
 
@@ -80,11 +83,14 @@ class KeyboardViewController: UIInputViewController {
         setupGoogleView()
         setupChatGPTView()
 
-        // Setup action bar
-        setupActionBar()
-
         // Show initial mode
         updateModeVisibility()
+        if currentMode == .google {
+            currentHeight = .large
+            updateHeight(animated: false)
+            loadGoogleSearchFromContext()
+            updateContainerExpansionState()
+        }
     }
 
     private func setupContainer() {
@@ -112,7 +118,7 @@ class KeyboardViewController: UIInputViewController {
             contentArea.topAnchor.constraint(equalTo: containerView.topAnchor),
             contentArea.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
             contentArea.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
-            contentArea.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -actionBarHeight)
+            contentArea.bottomAnchor.constraint(equalTo: containerView.bottomAnchor)
         ])
     }
 
@@ -130,9 +136,8 @@ class KeyboardViewController: UIInputViewController {
         ])
 
         // Create 2x2 grid of buttons
-        let buttonSize: CGFloat = 100
-        let spacing: CGFloat = 12
-        let padding: CGFloat = 20
+        let spacing: CGFloat = 2
+        let padding: CGFloat = 3
 
         // Reply button (top-left)
         let replyButton = createActionButton(title: "Reply", color: .systemBlue)
@@ -158,27 +163,39 @@ class KeyboardViewController: UIInputViewController {
             // Reply (top-left)
             replyButton.topAnchor.constraint(equalTo: homeView.topAnchor, constant: padding),
             replyButton.leadingAnchor.constraint(equalTo: homeView.leadingAnchor, constant: padding),
-            replyButton.widthAnchor.constraint(equalToConstant: buttonSize),
-            replyButton.heightAnchor.constraint(equalToConstant: buttonSize),
-
             // Rewrite (top-right)
             rewriteButton.topAnchor.constraint(equalTo: homeView.topAnchor, constant: padding),
             rewriteButton.trailingAnchor.constraint(equalTo: homeView.trailingAnchor, constant: -padding),
-            rewriteButton.widthAnchor.constraint(equalToConstant: buttonSize),
-            rewriteButton.heightAnchor.constraint(equalToConstant: buttonSize),
 
             // Google (bottom-left)
             googleButton.bottomAnchor.constraint(equalTo: homeView.bottomAnchor, constant: -padding),
             googleButton.leadingAnchor.constraint(equalTo: homeView.leadingAnchor, constant: padding),
-            googleButton.widthAnchor.constraint(equalToConstant: buttonSize),
-            googleButton.heightAnchor.constraint(equalToConstant: buttonSize),
 
             // ChatGPT (bottom-right)
             chatgptButton.bottomAnchor.constraint(equalTo: homeView.bottomAnchor, constant: -padding),
             chatgptButton.trailingAnchor.constraint(equalTo: homeView.trailingAnchor, constant: -padding),
-            chatgptButton.widthAnchor.constraint(equalToConstant: buttonSize),
-            chatgptButton.heightAnchor.constraint(equalToConstant: buttonSize)
+
+            // Horizontal spacing
+            rewriteButton.leadingAnchor.constraint(equalTo: replyButton.trailingAnchor, constant: spacing),
+            chatgptButton.leadingAnchor.constraint(equalTo: googleButton.trailingAnchor, constant: spacing),
+
+            // Vertical spacing
+            googleButton.topAnchor.constraint(equalTo: replyButton.bottomAnchor, constant: spacing),
+            chatgptButton.topAnchor.constraint(equalTo: rewriteButton.bottomAnchor, constant: spacing)
         ])
+
+        // Equal sizing to keep grid uniform
+        replyButton.widthAnchor.constraint(equalTo: rewriteButton.widthAnchor).isActive = true
+        replyButton.widthAnchor.constraint(equalTo: googleButton.widthAnchor).isActive = true
+        replyButton.widthAnchor.constraint(equalTo: chatgptButton.widthAnchor).isActive = true
+
+        replyButton.heightAnchor.constraint(equalTo: replyButton.widthAnchor).isActive = true
+        rewriteButton.heightAnchor.constraint(equalTo: rewriteButton.widthAnchor).isActive = true
+        googleButton.heightAnchor.constraint(equalTo: googleButton.widthAnchor).isActive = true
+        chatgptButton.heightAnchor.constraint(equalTo: chatgptButton.widthAnchor).isActive = true
+
+        replyButton.heightAnchor.constraint(equalTo: googleButton.heightAnchor).isActive = true
+        rewriteButton.heightAnchor.constraint(equalTo: chatgptButton.heightAnchor).isActive = true
     }
 
     private func createActionButton(title: String, color: UIColor) -> UIButton {
@@ -193,77 +210,137 @@ class KeyboardViewController: UIInputViewController {
     }
 
     private func setupReplyView() {
-        replyView = createPlaceholderView(title: "Reply Mode", color: .systemBlue)
+        replyView = UIView()
+        replyView.backgroundColor = .clear
+        replyView.translatesAutoresizingMaskIntoConstraints = false
+        contentArea.addSubview(replyView)
+
+        NSLayoutConstraint.activate([
+            replyView.topAnchor.constraint(equalTo: contentArea.topAnchor),
+            replyView.leadingAnchor.constraint(equalTo: contentArea.leadingAnchor),
+            replyView.trailingAnchor.constraint(equalTo: contentArea.trailingAnchor),
+            replyView.bottomAnchor.constraint(equalTo: contentArea.bottomAnchor)
+        ])
+
+        replyContainer = createActionContainer(
+            title: "Reply Mode",
+            buttonConfigs: [
+                .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
+                    self?.switchToMode(.home, height: .small)
+                }),
+                .init(style: .text(title: "Generate", symbolName: "sparkles", isPrimary: true), action: { [weak self] in
+                    self?.handlePlaceholderAction(named: "Generate Reply")
+                })
+            ]
+        )
+        replyView.addSubview(replyContainer)
+        pinContainer(replyContainer, to: replyView)
     }
 
     private func setupRewriteView() {
-        rewriteView = createPlaceholderView(title: "Rewrite Mode", color: .systemGreen)
+        rewriteView = UIView()
+        rewriteView.backgroundColor = .clear
+        rewriteView.translatesAutoresizingMaskIntoConstraints = false
+        contentArea.addSubview(rewriteView)
+
+        NSLayoutConstraint.activate([
+            rewriteView.topAnchor.constraint(equalTo: contentArea.topAnchor),
+            rewriteView.leadingAnchor.constraint(equalTo: contentArea.leadingAnchor),
+            rewriteView.trailingAnchor.constraint(equalTo: contentArea.trailingAnchor),
+            rewriteView.bottomAnchor.constraint(equalTo: contentArea.bottomAnchor)
+        ])
+
+        rewriteContainer = createActionContainer(
+            title: "Rewrite Mode",
+            buttonConfigs: [
+                .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
+                    self?.switchToMode(.home, height: .small)
+                }),
+                .init(style: .text(title: "Generate", symbolName: "sparkles", isPrimary: true), action: { [weak self] in
+                    self?.handlePlaceholderAction(named: "Generate Rewrite")
+                })
+            ]
+        )
+        rewriteView.addSubview(rewriteContainer)
+        pinContainer(rewriteContainer, to: rewriteView)
     }
 
     private func setupGoogleView() {
-        googleView = createPlaceholderView(title: "Google Mode", color: .systemOrange)
+        googleView = UIView()
+        googleView.backgroundColor = .clear
+        googleView.translatesAutoresizingMaskIntoConstraints = false
+        contentArea.addSubview(googleView)
+
+        NSLayoutConstraint.activate([
+            googleView.topAnchor.constraint(equalTo: contentArea.topAnchor),
+            googleView.leadingAnchor.constraint(equalTo: contentArea.leadingAnchor),
+            googleView.trailingAnchor.constraint(equalTo: contentArea.trailingAnchor),
+            googleView.bottomAnchor.constraint(equalTo: contentArea.bottomAnchor)
+        ])
+
+        let webConfiguration = WKWebViewConfiguration()
+        webConfiguration.defaultWebpagePreferences.preferredContentMode = .mobile
+        let webView = WKWebView(frame: .zero, configuration: webConfiguration)
+        webView.translatesAutoresizingMaskIntoConstraints = false
+        webView.navigationDelegate = self
+        googleWebView = webView
+
+        googleContainer = createActionContainer(
+            title: nil,
+            contentView: webView,
+            buttonConfigs: [
+                .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
+                    self?.switchToMode(.home, height: .small)
+                }),
+                .init(style: .icon(symbolName: "arrow.clockwise", accessibilityLabel: "Reload"), action: { [weak self] in
+                    self?.reloadGoogle()
+                }),
+                .init(style: .text(title: "Open", symbolName: "safari", isPrimary: false), action: { [weak self] in
+                    self?.openGoogleResult()
+                }),
+                .init(style: .text(title: "Insert", symbolName: "arrow.up", isPrimary: true), action: { [weak self] in
+                    self?.insertGoogleResult()
+                })
+            ],
+            showsToggle: false,
+            contentInsets: .zero
+        )
+        googleView.addSubview(googleContainer)
+        pinContainer(googleContainer, to: googleView)
     }
 
     private func setupChatGPTView() {
-        chatgptView = createPlaceholderView(title: "ChatGPT Mode", color: .systemPurple)
-    }
-
-    private func createPlaceholderView(title: String, color: UIColor) -> UIView {
-        let view = UIView()
-        view.backgroundColor = .clear
-        view.translatesAutoresizingMaskIntoConstraints = false
-        view.alpha = 0
-        contentArea.addSubview(view)
+        chatgptView = UIView()
+        chatgptView.backgroundColor = .clear
+        chatgptView.translatesAutoresizingMaskIntoConstraints = false
+        contentArea.addSubview(chatgptView)
 
         NSLayoutConstraint.activate([
-            view.topAnchor.constraint(equalTo: contentArea.topAnchor),
-            view.leadingAnchor.constraint(equalTo: contentArea.leadingAnchor),
-            view.trailingAnchor.constraint(equalTo: contentArea.trailingAnchor),
-            view.bottomAnchor.constraint(equalTo: contentArea.bottomAnchor)
+            chatgptView.topAnchor.constraint(equalTo: contentArea.topAnchor),
+            chatgptView.leadingAnchor.constraint(equalTo: contentArea.leadingAnchor),
+            chatgptView.trailingAnchor.constraint(equalTo: contentArea.trailingAnchor),
+            chatgptView.bottomAnchor.constraint(equalTo: contentArea.bottomAnchor)
         ])
 
-        let label = UILabel()
-        label.text = title
-        label.textAlignment = .center
-        label.font = .systemFont(ofSize: 24, weight: .bold)
-        label.textColor = color
-        label.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(label)
-
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: view.centerYAnchor)
-        ])
-
-        return view
-    }
-
-    private func setupActionBar() {
-        actionBar = UIView()
-        actionBar.backgroundColor = .clear
-        actionBar.translatesAutoresizingMaskIntoConstraints = false
-        containerView.addSubview(actionBar)
-
-        NSLayoutConstraint.activate([
-            actionBar.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-            actionBar.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
-            actionBar.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
-            actionBar.heightAnchor.constraint(equalToConstant: actionBarHeight)
-        ])
-
-        // Back button (hidden in home mode)
-        backButton = UIButton(type: .system)
-        backButton.setTitle("← Back", for: .normal)
-        backButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        backButton.addTarget(self, action: #selector(backTapped), for: .touchUpInside)
-        backButton.translatesAutoresizingMaskIntoConstraints = false
-        backButton.alpha = 0
-        actionBar.addSubview(backButton)
-
-        NSLayoutConstraint.activate([
-            backButton.leadingAnchor.constraint(equalTo: actionBar.leadingAnchor, constant: 16),
-            backButton.centerYAnchor.constraint(equalTo: actionBar.centerYAnchor)
-        ])
+        chatgptContainer = createActionContainer(
+            title: "ChatGPT Mode",
+            buttonConfigs: [
+                .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
+                    self?.switchToMode(.home, height: .small)
+                }),
+                .init(style: .icon(symbolName: "arrow.clockwise", accessibilityLabel: "Reload"), action: { [weak self] in
+                    self?.handlePlaceholderAction(named: "Reload ChatGPT")
+                }),
+                .init(style: .icon(symbolName: "doc.on.doc", accessibilityLabel: "Copy"), action: { [weak self] in
+                    self?.handlePlaceholderAction(named: "Copy ChatGPT Output")
+                }),
+                .init(style: .text(title: "Insert", symbolName: "arrow.up", isPrimary: true), action: { [weak self] in
+                    self?.handlePlaceholderAction(named: "Insert ChatGPT Output")
+                })
+            ]
+        )
+        chatgptView.addSubview(chatgptContainer)
+        pinContainer(chatgptContainer, to: chatgptView)
     }
 
     // MARK: - Actions
@@ -284,23 +361,36 @@ class KeyboardViewController: UIInputViewController {
         switchToMode(.chatgpt, height: .small)
     }
 
-    @objc private func backTapped() {
-        switchToMode(.home, height: .small)
-    }
-
     // MARK: - Mode Management
 
     private func switchToMode(_ mode: KeyboardMode, height: KeyboardHeight) {
+        let previousMode = currentMode
         currentMode = mode
 
-        // Update height if needed
-        if currentHeight != height {
-            currentHeight = height
-            updateHeight(animated: true)
+        let targetHeight: KeyboardHeight = mode == .google ? .large : height
+
+        let shouldAnimateHeight: Bool
+        if mode == .google {
+            shouldAnimateHeight = false
+        } else if previousMode == .google {
+            shouldAnimateHeight = false
+        } else {
+            shouldAnimateHeight = true
+        }
+
+        if currentHeight != targetHeight {
+            currentHeight = targetHeight
+            updateHeight(animated: shouldAnimateHeight)
+        } else if !shouldAnimateHeight {
+            updateHeight(animated: false)
         }
 
         // Update UI
         updateModeVisibility()
+        if mode == .google {
+            loadGoogleSearchFromContext()
+        }
+        updateContainerExpansionState()
         persistState()
     }
 
@@ -316,24 +406,27 @@ class KeyboardViewController: UIInputViewController {
         switch currentMode {
         case .home:
             homeView.alpha = 1
-            backButton.alpha = 0
         case .reply:
             replyView.alpha = 1
-            backButton.alpha = 1
         case .rewrite:
             rewriteView.alpha = 1
-            backButton.alpha = 1
         case .google:
             googleView.alpha = 1
-            backButton.alpha = 1
         case .chatgpt:
             chatgptView.alpha = 1
-            backButton.alpha = 1
         }
     }
 
+    private func updateContainerExpansionState() {
+        let isExpanded = currentHeight == .large
+        replyContainer?.setExpanded(isExpanded)
+        rewriteContainer?.setExpanded(isExpanded)
+        googleContainer?.setExpanded(isExpanded)
+        chatgptContainer?.setExpanded(isExpanded)
+    }
+
     private func updateHeight(animated: Bool) {
-        heightConstraint.constant = currentHeight.rawValue
+        heightConstraint.constant = containerHeight(for: currentHeight)
 
         if animated {
             UIView.animate(
@@ -388,7 +481,142 @@ class KeyboardViewController: UIInputViewController {
         // Restore height
         if defaults.object(forKey: "KeyCo_currentHeight") != nil {
             let heightValue = defaults.double(forKey: "KeyCo_currentHeight")
-            currentHeight = heightValue == KeyboardHeight.large.rawValue ? .large : .small
+            if abs(heightValue - KeyboardHeight.large.rawValue) < 0.5 || abs(heightValue - 500) < 0.5 {
+                currentHeight = .large
+            } else {
+                currentHeight = .small
+            }
         }
+
+        if currentMode == .google {
+            currentHeight = .large
+        }
+
+        updateContainerExpansionState()
+    }
+
+    // MARK: - Helpers
+
+    private func createActionContainer(
+        title: String?,
+        contentView: UIView? = nil,
+        buttonConfigs: [ActionContainerView.ActionButtonConfiguration],
+        showsToggle: Bool = true,
+        contentInsets: UIEdgeInsets = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+    ) -> ActionContainerView {
+        let container = ActionContainerView()
+        if let contentView {
+            container.setContentView(contentView)
+        } else if let title {
+            container.setContentView(createModePlaceholderContent(title: title))
+        } else {
+            container.setContentView(UIView())
+        }
+        let buttonTopSpacing: CGFloat = 12
+        let dividerSpacing: CGFloat = contentInsets.bottom > 0 ? 12 : 0
+        container.setContentLayout(
+            insets: contentInsets,
+            dividerSpacing: dividerSpacing,
+            buttonTopSpacing: buttonTopSpacing,
+            buttonSideInset: 12,
+            buttonBottomInset: 12,
+            buttonCornerRadius: 20
+        )
+        container.configureButtons(buttonConfigs)
+        container.onToggle = showsToggle ? { [weak self] in
+            self?.toggleHeight()
+        } : nil
+        container.setExpanded(currentHeight == .large)
+        return container
+    }
+
+    private func pinContainer(_ container: UIView, to hostView: UIView) {
+        NSLayoutConstraint.activate([
+            container.leadingAnchor.constraint(equalTo: hostView.leadingAnchor, constant: 3),
+            container.trailingAnchor.constraint(equalTo: hostView.trailingAnchor, constant: -3),
+            container.bottomAnchor.constraint(equalTo: hostView.bottomAnchor, constant: -3),
+            container.topAnchor.constraint(equalTo: hostView.topAnchor, constant: 3)
+        ])
+    }
+
+    private func containerHeight(for keyboardHeight: KeyboardHeight) -> CGFloat {
+        keyboardHeight.rawValue + (containerMargin * 2)
+    }
+
+    private func createModePlaceholderContent(title: String) -> UIView {
+        let label = UILabel()
+        label.text = title
+        label.font = .systemFont(ofSize: 20, weight: .semibold)
+        label.textColor = .secondaryLabel
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        return label
+    }
+
+    // MARK: - Google Helpers
+
+    private func loadGoogleSearchFromContext() {
+        guard let webView = googleWebView else { return }
+        let query = currentDocumentText()
+        let url = googleURL(for: query)
+        currentGoogleURL = url
+        webView.load(URLRequest(url: url))
+    }
+
+    private func reloadGoogle() {
+        guard let webView = googleWebView else { return }
+        if webView.url == nil {
+            loadGoogleSearchFromContext()
+        } else {
+            webView.reload()
+        }
+    }
+
+    private func openGoogleResult() {
+        guard let url = googleWebView?.url ?? currentGoogleURL else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.extensionContext?.open(url, completionHandler: nil)
+        }
+    }
+
+    private func insertGoogleResult() {
+        guard let url = googleWebView?.url ?? currentGoogleURL else { return }
+        textDocumentProxy.insertText("\n\n\(url.absoluteString)\n\n")
+    }
+
+    private func currentDocumentText() -> String {
+        let before = textDocumentProxy.documentContextBeforeInput ?? ""
+        let after = textDocumentProxy.documentContextAfterInput ?? ""
+        let combined = before + after
+        return combined.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func googleURL(for query: String) -> URL {
+        guard !query.isEmpty,
+              let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://www.google.com/search?q=\(encoded)") else {
+            return URL(string: "https://www.google.com/")!
+        }
+        return url
+    }
+
+    private func toggleHeight() {
+        guard currentMode != .google else { return }
+        let newHeight: KeyboardHeight = currentHeight == .small ? .large : .small
+        currentHeight = newHeight
+        updateHeight(animated: false)
+        updateContainerExpansionState()
+        persistState()
+    }
+
+    private func handlePlaceholderAction(named name: String) {
+        NSLog("[KeyCoKeyboard] Action triggered: %@", name)
+    }
+}
+
+extension KeyboardViewController: WKNavigationDelegate {
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        guard let storedWebView = googleWebView, webView === storedWebView else { return }
+        currentGoogleURL = webView.url
     }
 }
