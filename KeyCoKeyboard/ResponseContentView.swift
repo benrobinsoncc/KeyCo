@@ -1,4 +1,6 @@
 import UIKit
+import SwiftUI
+import AnimateText
 
 /// Content view for displaying mode title and response text
 final class ResponseContentView: UIView {
@@ -6,9 +8,9 @@ final class ResponseContentView: UIView {
     // MARK: - Properties
 
     private let titleLabel = UILabel()
-    private let responseLabel = UILabel()
     private let scrollView = UIScrollView()
     private let responseContainer = UIView()
+    private var hostingController: UIHostingController<AnimatedResponseText>?
 
     var title: String = "" {
         didSet {
@@ -18,12 +20,7 @@ final class ResponseContentView: UIView {
 
     var responseText: String = "" {
         didSet {
-            responseLabel.text = responseText
-
-            // Animate blur-in effect for new content
-            if !responseText.isEmpty && responseText != "Loading..." {
-                animateBlurIn()
-            }
+            updateAnimatedText(responseText)
         }
     }
 
@@ -61,15 +58,18 @@ final class ResponseContentView: UIView {
         responseContainer.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(responseContainer)
 
-        // Setup response label
-        responseLabel.font = .systemFont(ofSize: 16, weight: .regular)
-        responseLabel.textColor = .label
-        responseLabel.numberOfLines = 0
-        responseLabel.translatesAutoresizingMaskIntoConstraints = false
-        responseContainer.addSubview(responseLabel)
+        // Setup SwiftUI hosting controller for animated text
+        let swiftUIView = AnimatedResponseText(text: "")
+        let hosting = UIHostingController(rootView: swiftUIView)
+        hosting.view.backgroundColor = .clear
+        hosting.view.translatesAutoresizingMaskIntoConstraints = false
+        hostingController = hosting
+        responseContainer.addSubview(hosting.view)
     }
 
     private func setupLayout() {
+        guard let hostingView = hostingController?.view else { return }
+
         NSLayoutConstraint.activate([
             // Title label at the top with padding
             titleLabel.topAnchor.constraint(equalTo: topAnchor),
@@ -89,38 +89,46 @@ final class ResponseContentView: UIView {
             responseContainer.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
             responseContainer.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
 
-            // Response label inside container with padding
-            responseLabel.topAnchor.constraint(equalTo: responseContainer.topAnchor),
-            responseLabel.leadingAnchor.constraint(equalTo: responseContainer.leadingAnchor, constant: 4),
-            responseLabel.trailingAnchor.constraint(equalTo: responseContainer.trailingAnchor, constant: -4),
-            responseLabel.bottomAnchor.constraint(equalTo: responseContainer.bottomAnchor)
+            // SwiftUI hosting view inside container with padding
+            hostingView.topAnchor.constraint(equalTo: responseContainer.topAnchor),
+            hostingView.leadingAnchor.constraint(equalTo: responseContainer.leadingAnchor, constant: 4),
+            hostingView.trailingAnchor.constraint(equalTo: responseContainer.trailingAnchor, constant: -4),
+            hostingView.bottomAnchor.constraint(equalTo: responseContainer.bottomAnchor)
         ])
     }
 
-    // MARK: - Animation
+    // MARK: - Update
 
-    private func animateBlurIn() {
-        // Create a blur view container
-        let blurContainer = UIVisualEffectView(effect: nil)
-        blurContainer.frame = responseLabel.bounds
-        blurContainer.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        blurContainer.clipsToBounds = true
-        responseLabel.insertSubview(blurContainer, at: 0)
+    private func updateAnimatedText(_ text: String) {
+        let shouldAnimate = !text.isEmpty && text != "Loading..."
+        hostingController?.rootView = AnimatedResponseText(text: text, shouldAnimate: shouldAnimate)
+    }
+}
 
-        // Start with blur and fade in
-        responseLabel.alpha = 0
+// MARK: - SwiftUI Animated Text View
 
-        // Animate blur to clear and fade in text
-        UIView.animate(withDuration: 0.8, delay: 0, options: [.curveEaseOut], animations: {
-            blurContainer.effect = UIBlurEffect(style: .regular)
-        }, completion: { _ in
-            // Fade in the text while fading out the blur
-            UIView.animate(withDuration: 0.6, delay: 0.1, options: [.curveEaseInOut], animations: {
-                self.responseLabel.alpha = 1
-                blurContainer.alpha = 0
-            }, completion: { _ in
-                blurContainer.removeFromSuperview()
-            })
-        })
+struct AnimatedResponseText: View {
+    let text: String
+    var shouldAnimate: Bool = false
+    @State private var displayText: String = ""
+
+    var body: some View {
+        AnimateText<ATBlurEffect>($displayText, type: .letters)
+            .font(.system(size: 16))
+            .foregroundColor(Color(uiColor: .label))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .onAppear {
+                if shouldAnimate {
+                    // Trigger animation by setting the text after a brief delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        displayText = text
+                    }
+                } else {
+                    displayText = text
+                }
+            }
+            .onChange(of: text) { newValue in
+                displayText = newValue
+            }
     }
 }
