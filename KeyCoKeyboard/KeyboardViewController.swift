@@ -16,7 +16,7 @@ class KeyboardViewController: UIInputViewController {
 
     private enum KeyboardHeight: CGFloat {
         case small = 250
-        case large = 650
+        case large = 800
     }
 
     private var currentMode: KeyboardMode = .home
@@ -40,8 +40,16 @@ class KeyboardViewController: UIInputViewController {
     private var googleWebView: WKWebView?
     private var currentGoogleURL: URL?
 
+    // Response content views
+    private var replyContentView: ResponseContentView!
+    private var rewriteContentView: ResponseContentView!
+    private var chatgptContentView: ResponseContentView!
+
     private let containerMargin: CGFloat = 3
     private let cornerRadius: CGFloat = 20
+
+    // ChatGPT API
+    private let chatGPTAPIKey = "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"
     // MARK: - Lifecycle
 
     override func viewDidLoad() {
@@ -95,7 +103,7 @@ class KeyboardViewController: UIInputViewController {
 
     private func setupContainer() {
         containerView = UIView()
-        containerView.backgroundColor = .systemGray4
+        containerView.backgroundColor = .clear
         containerView.layer.cornerRadius = cornerRadius
         containerView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(containerView)
@@ -222,8 +230,14 @@ class KeyboardViewController: UIInputViewController {
             replyView.bottomAnchor.constraint(equalTo: contentArea.bottomAnchor)
         ])
 
+        // Create response content view
+        replyContentView = ResponseContentView()
+        replyContentView.title = "REPLY"
+        replyContentView.responseText = ""
+
         replyContainer = createActionContainer(
-            title: "Reply Mode",
+            title: nil,
+            contentView: replyContentView,
             buttonConfigs: [
                 .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
                     self?.switchToMode(.home, height: .small)
@@ -231,7 +245,9 @@ class KeyboardViewController: UIInputViewController {
                 .init(style: .text(title: "Generate", symbolName: "sparkles", isPrimary: true), action: { [weak self] in
                     self?.handlePlaceholderAction(named: "Generate Reply")
                 })
-            ]
+            ],
+            showsToggle: true,
+            contentInsets: UIEdgeInsets(top: 12, left: 12, bottom: 0, right: 12)
         )
         replyView.addSubview(replyContainer)
         pinContainer(replyContainer, to: replyView)
@@ -250,8 +266,14 @@ class KeyboardViewController: UIInputViewController {
             rewriteView.bottomAnchor.constraint(equalTo: contentArea.bottomAnchor)
         ])
 
+        // Create response content view
+        rewriteContentView = ResponseContentView()
+        rewriteContentView.title = "REWRITE"
+        rewriteContentView.responseText = ""
+
         rewriteContainer = createActionContainer(
-            title: "Rewrite Mode",
+            title: nil,
+            contentView: rewriteContentView,
             buttonConfigs: [
                 .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
                     self?.switchToMode(.home, height: .small)
@@ -259,7 +281,9 @@ class KeyboardViewController: UIInputViewController {
                 .init(style: .text(title: "Generate", symbolName: "sparkles", isPrimary: true), action: { [weak self] in
                     self?.handlePlaceholderAction(named: "Generate Rewrite")
                 })
-            ]
+            ],
+            showsToggle: true,
+            contentInsets: UIEdgeInsets(top: 12, left: 12, bottom: 0, right: 12)
         )
         rewriteView.addSubview(rewriteContainer)
         pinContainer(rewriteContainer, to: rewriteView)
@@ -322,22 +346,30 @@ class KeyboardViewController: UIInputViewController {
             chatgptView.bottomAnchor.constraint(equalTo: contentArea.bottomAnchor)
         ])
 
+        // Create response content view
+        chatgptContentView = ResponseContentView()
+        chatgptContentView.title = "CHATGPT"
+        chatgptContentView.responseText = ""
+
         chatgptContainer = createActionContainer(
-            title: "ChatGPT Mode",
+            title: nil,
+            contentView: chatgptContentView,
             buttonConfigs: [
                 .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
                     self?.switchToMode(.home, height: .small)
                 }),
                 .init(style: .icon(symbolName: "arrow.clockwise", accessibilityLabel: "Reload"), action: { [weak self] in
-                    self?.handlePlaceholderAction(named: "Reload ChatGPT")
+                    self?.reloadChatGPT()
                 }),
                 .init(style: .icon(symbolName: "doc.on.doc", accessibilityLabel: "Copy"), action: { [weak self] in
-                    self?.handlePlaceholderAction(named: "Copy ChatGPT Output")
+                    self?.copyChatGPTOutput()
                 }),
                 .init(style: .text(title: "Insert", symbolName: "arrow.up", isPrimary: true), action: { [weak self] in
-                    self?.handlePlaceholderAction(named: "Insert ChatGPT Output")
+                    self?.insertChatGPTOutput()
                 })
-            ]
+            ],
+            showsToggle: true,
+            contentInsets: UIEdgeInsets(top: 12, left: 12, bottom: 0, right: 12)
         )
         chatgptView.addSubview(chatgptContainer)
         pinContainer(chatgptContainer, to: chatgptView)
@@ -359,6 +391,7 @@ class KeyboardViewController: UIInputViewController {
 
     @objc private func chatgptTapped() {
         switchToMode(.chatgpt, height: .small)
+        queryChatGPT()
     }
 
     // MARK: - Mode Management
@@ -481,7 +514,7 @@ class KeyboardViewController: UIInputViewController {
         // Restore height
         if defaults.object(forKey: "KeyCo_currentHeight") != nil {
             let heightValue = defaults.double(forKey: "KeyCo_currentHeight")
-            if abs(heightValue - KeyboardHeight.large.rawValue) < 0.5 || abs(heightValue - 500) < 0.5 {
+            if abs(heightValue - KeyboardHeight.large.rawValue) < 0.5 {
                 currentHeight = .large
             } else {
                 currentHeight = .small
@@ -573,15 +606,35 @@ class KeyboardViewController: UIInputViewController {
     }
 
     private func openGoogleResult() {
-        guard let url = googleWebView?.url ?? currentGoogleURL else { return }
-        DispatchQueue.main.async { [weak self] in
-            self?.extensionContext?.open(url, completionHandler: nil)
+        guard let url = googleWebView?.url ?? currentGoogleURL else {
+            NSLog("[KeyCo] No URL available to open")
+            return
+        }
+
+        NSLog("[KeyCo] Attempting to open URL: %@", url.absoluteString)
+
+        // Check if extensionContext exists
+        guard let context = extensionContext else {
+            NSLog("[KeyCo] Extension context is nil")
+            return
+        }
+
+        // Try to open the URL
+        context.open(url) { success in
+            NSLog("[KeyCo] Open URL result: %@", success ? "SUCCESS" : "FAILED")
+            if !success {
+                // If opening fails, copy URL to clipboard as fallback
+                DispatchQueue.main.async {
+                    UIPasteboard.general.string = url.absoluteString
+                    NSLog("[KeyCo] Copied URL to clipboard: %@", url.absoluteString)
+                }
+            }
         }
     }
 
     private func insertGoogleResult() {
         guard let url = googleWebView?.url ?? currentGoogleURL else { return }
-        textDocumentProxy.insertText("\n\n\(url.absoluteString)\n\n")
+        textDocumentProxy.insertText("\n\n\(url.absoluteString)")
     }
 
     private func currentDocumentText() -> String {
@@ -611,6 +664,99 @@ class KeyboardViewController: UIInputViewController {
 
     private func handlePlaceholderAction(named name: String) {
         NSLog("[KeyCoKeyboard] Action triggered: %@", name)
+    }
+
+    // MARK: - ChatGPT Helpers
+
+    private func queryChatGPT() {
+        let query = currentDocumentText()
+        guard !query.isEmpty else {
+            chatgptContentView.responseText = "No text to query. Type something first."
+            return
+        }
+
+        chatgptContentView.responseText = "Loading..."
+
+        // Make API request
+        let url = URL(string: "https://api.openai.com/v1/chat/completions")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(chatGPTAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let requestBody: [String: Any] = [
+            "model": "gpt-4",
+            "messages": [
+                ["role": "user", "content": query]
+            ],
+            "max_tokens": 500
+        ]
+
+        guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            chatgptContentView.responseText = "Error: Failed to create request"
+            return
+        }
+
+        request.httpBody = httpBody
+
+        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+
+                if let error = error {
+                    self.chatgptContentView.responseText = "Error: \(error.localizedDescription)"
+                    NSLog("[KeyCo] ChatGPT API error: %@", error.localizedDescription)
+                    return
+                }
+
+                guard let data = data else {
+                    self.chatgptContentView.responseText = "Error: No data received"
+                    return
+                }
+
+                do {
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let choices = json["choices"] as? [[String: Any]],
+                       let firstChoice = choices.first,
+                       let message = firstChoice["message"] as? [String: Any],
+                       let content = message["content"] as? String {
+                        self.chatgptContentView.responseText = content.trimmingCharacters(in: .whitespacesAndNewlines)
+                    } else {
+                        // Try to parse error response
+                        if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                           let error = json["error"] as? [String: Any],
+                           let message = error["message"] as? String {
+                            self.chatgptContentView.responseText = "API Error: \(message)"
+                            NSLog("[KeyCo] ChatGPT API error: %@", message)
+                        } else {
+                            self.chatgptContentView.responseText = "Error: Invalid response format"
+                        }
+                    }
+                } catch {
+                    self.chatgptContentView.responseText = "Error: Failed to parse response"
+                    NSLog("[KeyCo] ChatGPT parse error: %@", error.localizedDescription)
+                }
+            }
+        }
+
+        task.resume()
+    }
+
+    private func reloadChatGPT() {
+        queryChatGPT()
+    }
+
+    private func copyChatGPTOutput() {
+        let text = chatgptContentView.responseText
+        guard !text.isEmpty, text != "Loading...", !text.hasPrefix("Error:") else { return }
+        UIPasteboard.general.string = text
+        NSLog("[KeyCo] Copied ChatGPT output to clipboard")
+    }
+
+    private func insertChatGPTOutput() {
+        let text = chatgptContentView.responseText
+        guard !text.isEmpty, text != "Loading...", !text.hasPrefix("Error:") else { return }
+        textDocumentProxy.insertText("\n\n\(text)")
     }
 }
 

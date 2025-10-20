@@ -13,6 +13,7 @@
 		A1000007000000000000001 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000008000000000000001 /* Preview Assets.xcassets */; };
 		A1000009000000000000001 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000010000000000000001 /* KeyboardViewController.swift */; };
 		A5000001000000000000001 /* ActionContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5000002000000000000001 /* ActionContainerView.swift */; };
+		A6000001000000000000001 /* ResponseContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6000002000000000000001 /* ResponseContentView.swift */; };
 		A1000011000000000000001 /* KeyCoKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A1000012000000000000001 /* KeyCoKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -50,6 +51,7 @@
 		A1000017000000000000001 /* KeyCo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KeyCo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1000018000000000000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A5000002000000000000001 /* ActionContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionContainerView.swift; sourceTree = "<group>"; };
+		A6000002000000000000001 /* ResponseContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseContentView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -95,6 +97,7 @@
 			children = (
 				A5000002000000000000001 /* ActionContainerView.swift */,
 				A1000010000000000000001 /* KeyboardViewController.swift */,
+				A6000002000000000000001 /* ResponseContentView.swift */,
 				A1000018000000000000001 /* Info.plist */,
 			);
 			path = KeyCoKeyboard;
@@ -228,6 +231,7 @@
 			files = (
 				A5000001000000000000001 /* ActionContainerView.swift in Sources */,
 				A1000009000000000000001 /* KeyboardViewController.swift in Sources */,
+				A6000001000000000000001 /* ResponseContentView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

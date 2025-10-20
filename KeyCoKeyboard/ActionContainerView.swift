@@ -136,6 +136,8 @@ final class ActionContainerView: UIView {
         }
         backgroundView.layer.cornerRadius = 16
         backgroundView.layer.masksToBounds = true
+        backgroundView.layer.borderWidth = 0
+        backgroundView.layer.borderColor = nil
 
         contentContainer.backgroundColor = .clear
 
@@ -146,7 +148,7 @@ final class ActionContainerView: UIView {
         }
 
         toggleButton.setImage(UIImage(systemName: "arrow.up.left.and.arrow.down.right"), for: .normal)
-        toggleButton.tintColor = .label
+        toggleButton.tintColor = .systemGray
         toggleButton.backgroundColor = .clear
         toggleButton.layer.cornerRadius = 15
         toggleButton.setPreferredSymbolConfiguration(
