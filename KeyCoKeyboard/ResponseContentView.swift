@@ -19,6 +19,11 @@ final class ResponseContentView: UIView {
     var responseText: String = "" {
         didSet {
             responseLabel.text = responseText
+
+            // Animate blur-in effect for new content
+            if !responseText.isEmpty && responseText != "Loading..." {
+                animateBlurIn()
+            }
         }
     }
 
@@ -90,5 +95,32 @@ final class ResponseContentView: UIView {
             responseLabel.trailingAnchor.constraint(equalTo: responseContainer.trailingAnchor, constant: -4),
             responseLabel.bottomAnchor.constraint(equalTo: responseContainer.bottomAnchor)
         ])
+    }
+
+    // MARK: - Animation
+
+    private func animateBlurIn() {
+        // Create a blur view container
+        let blurContainer = UIVisualEffectView(effect: nil)
+        blurContainer.frame = responseLabel.bounds
+        blurContainer.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        blurContainer.clipsToBounds = true
+        responseLabel.insertSubview(blurContainer, at: 0)
+
+        // Start with blur and fade in
+        responseLabel.alpha = 0
+
+        // Animate blur to clear and fade in text
+        UIView.animate(withDuration: 0.8, delay: 0, options: [.curveEaseOut], animations: {
+            blurContainer.effect = UIBlurEffect(style: .regular)
+        }, completion: { _ in
+            // Fade in the text while fading out the blur
+            UIView.animate(withDuration: 0.6, delay: 0.1, options: [.curveEaseInOut], animations: {
+                self.responseLabel.alpha = 1
+                blurContainer.alpha = 0
+            }, completion: { _ in
+                blurContainer.removeFromSuperview()
+            })
+        })
     }
 }
