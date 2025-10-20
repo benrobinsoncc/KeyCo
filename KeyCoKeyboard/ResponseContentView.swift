@@ -59,9 +59,9 @@ final class ResponseContentView: UIView {
         scrollView.addSubview(responseContainer)
 
         // Setup SwiftUI hosting controller for animated text
-        let swiftUIView = AnimatedResponseText(text: "")
+        let swiftUIView = AnimatedResponseText(text: "", shouldAnimate: false, id: UUID())
         let hosting = UIHostingController(rootView: swiftUIView)
-        hosting.view.backgroundColor = .clear
+        hosting.view.backgroundColor = UIColor.clear
         hosting.view.translatesAutoresizingMaskIntoConstraints = false
         hostingController = hosting
         responseContainer.addSubview(hosting.view)
@@ -101,7 +101,18 @@ final class ResponseContentView: UIView {
 
     private func updateAnimatedText(_ text: String) {
         let shouldAnimate = !text.isEmpty && text != "Loading..."
-        hostingController?.rootView = AnimatedResponseText(text: text, shouldAnimate: shouldAnimate)
+
+        // Force recreation of the view with a unique ID to trigger animation on each update
+        let newView = AnimatedResponseText(
+            text: text,
+            shouldAnimate: shouldAnimate,
+            id: UUID()
+        )
+        hostingController?.rootView = newView
+
+        // Force layout update to ensure wrapping works
+        hostingController?.view.setNeedsLayout()
+        hostingController?.view.layoutIfNeeded()
     }
 }
 
@@ -110,25 +121,32 @@ final class ResponseContentView: UIView {
 struct AnimatedResponseText: View {
     let text: String
     var shouldAnimate: Bool = false
+    let id: UUID
+
     @State private var displayText: String = ""
 
     var body: some View {
-        AnimateText<FastBlurEffect>($displayText, type: .letters) // Use custom fast blur effect
-            .font(.system(size: 16))
-            .foregroundColor(Color(uiColor: .label))
-            .lineLimit(nil) // Allow unlimited lines
-            .fixedSize(horizontal: false, vertical: true) // Allow vertical expansion for wrapping
-            .frame(maxWidth: .infinity, alignment: .topLeading) // Top-leading alignment
-            .onAppear {
-                if shouldAnimate {
-                    // Trigger animation immediately for faster response
-                    displayText = text
-                } else {
+        GeometryReader { geometry in
+            ScrollView {
+                AnimateText<FastBlurEffect>($displayText, type: .letters)
+                    .font(.system(size: 16))
+                    .foregroundColor(Color(uiColor: .label))
+                    .frame(width: geometry.size.width, alignment: .topLeading) // Force width
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .id(id) // Use ID to force SwiftUI to recreate the view
+        .onAppear {
+            // Reset and set text to trigger animation
+            displayText = ""
+            if shouldAnimate {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     displayText = text
                 }
+            } else {
+                displayText = text
             }
-            .onChange(of: text) { newValue in
-                displayText = newValue
-            }
+        }
     }
 }
