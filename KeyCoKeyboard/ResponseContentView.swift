@@ -126,27 +126,22 @@ struct AnimatedResponseText: View {
     @State private var displayText: String = ""
 
     var body: some View {
-        GeometryReader { geometry in
-            ScrollView {
-                AnimateText<FastBlurEffect>($displayText, type: .letters)
-                    .font(.system(size: 16))
-                    .foregroundColor(Color(uiColor: .label))
-                    .frame(width: geometry.size.width, alignment: .topLeading) // Force width
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .id(id) // Use ID to force SwiftUI to recreate the view
-        .onAppear {
-            // Reset and set text to trigger animation
-            displayText = ""
-            if shouldAnimate {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+        AnimateText<FastBlurEffect>($displayText, type: .letters)
+            .font(.system(size: 16))
+            .foregroundColor(Color(uiColor: .label))
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .fixedSize(horizontal: false, vertical: true)
+            .id(id) // Use ID to force SwiftUI to recreate the view
+            .onAppear {
+                // Reset and set text to trigger animation
+                displayText = ""
+                if shouldAnimate {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        displayText = text
+                    }
+                } else {
                     displayText = text
                 }
-            } else {
-                displayText = text
             }
-        }
     }
 }
