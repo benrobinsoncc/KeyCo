@@ -113,16 +113,16 @@ struct AnimatedResponseText: View {
     @State private var displayText: String = ""
 
     var body: some View {
-        AnimateText<ATBlurEffect>($displayText, type: .letters)
+        AnimateText<ATBlurEffect>($displayText, type: .letters, userInfo: 0.03) // Pass speed as userInfo
             .font(.system(size: 16))
             .foregroundColor(Color(uiColor: .label))
             .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true) // Allow vertical expansion for wrapping
+            .multilineTextAlignment(.leading)
             .onAppear {
                 if shouldAnimate {
-                    // Trigger animation by setting the text after a brief delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        displayText = text
-                    }
+                    // Trigger animation immediately for faster response
+                    displayText = text
                 } else {
                     displayText = text
                 }
