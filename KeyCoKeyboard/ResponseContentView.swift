@@ -48,15 +48,9 @@ final class ResponseContentView: UIView {
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(titleLabel)
 
-        // Setup scroll view (only for response)
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.showsVerticalScrollIndicator = true
-        scrollView.alwaysBounceVertical = true
-        addSubview(scrollView)
-
-        // Setup response container
+        // Setup response container directly (no scroll view - let parent handle scrolling)
         responseContainer.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.addSubview(responseContainer)
+        addSubview(responseContainer)
 
         // Setup SwiftUI hosting controller for animated text
         let swiftUIView = AnimatedResponseText(text: "", shouldAnimate: false, id: UUID())
@@ -76,24 +70,17 @@ final class ResponseContentView: UIView {
             titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
             titleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
 
-            // Scroll view below title, extends to bottom (no gap)
-            scrollView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
-            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
-
-            // Response container inside scroll view
-            responseContainer.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            responseContainer.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            responseContainer.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            responseContainer.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            responseContainer.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+            // Response container below title
+            responseContainer.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            responseContainer.leadingAnchor.constraint(equalTo: leadingAnchor),
+            responseContainer.trailingAnchor.constraint(equalTo: trailingAnchor),
+            responseContainer.bottomAnchor.constraint(equalTo: bottomAnchor),
 
             // SwiftUI hosting view inside container with padding
             hostingView.topAnchor.constraint(equalTo: responseContainer.topAnchor),
             hostingView.leadingAnchor.constraint(equalTo: responseContainer.leadingAnchor, constant: 4),
             hostingView.trailingAnchor.constraint(equalTo: responseContainer.trailingAnchor, constant: -4),
-            hostingView.bottomAnchor.constraint(equalTo: responseContainer.bottomAnchor)
+            hostingView.bottomAnchor.constraint(lessThanOrEqualTo: responseContainer.bottomAnchor)
         ])
     }
 
@@ -102,7 +89,7 @@ final class ResponseContentView: UIView {
     private func updateAnimatedText(_ text: String) {
         let shouldAnimate = !text.isEmpty && text != "Loading..."
 
-        // Force recreation of the view with a unique ID to trigger animation on each update
+        // Force recreation of the view with a unique ID
         let newView = AnimatedResponseText(
             text: text,
             shouldAnimate: shouldAnimate,
@@ -110,7 +97,7 @@ final class ResponseContentView: UIView {
         )
         hostingController?.rootView = newView
 
-        // Force layout update to ensure wrapping works
+        // Force layout update
         hostingController?.view.setNeedsLayout()
         hostingController?.view.layoutIfNeeded()
     }
@@ -123,25 +110,11 @@ struct AnimatedResponseText: View {
     var shouldAnimate: Bool = false
     let id: UUID
 
-    @State private var displayText: String = ""
-
     var body: some View {
-        AnimateText<FastBlurEffect>($displayText, type: .letters)
+        Text(text)
             .font(.system(size: 16))
             .foregroundColor(Color(uiColor: .label))
-            .frame(maxWidth: .infinity, alignment: .topLeading)
             .fixedSize(horizontal: false, vertical: true)
-            .id(id) // Use ID to force SwiftUI to recreate the view
-            .onAppear {
-                // Reset and set text to trigger animation
-                displayText = ""
-                if shouldAnimate {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                        displayText = text
-                    }
-                } else {
-                    displayText = text
-                }
-            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }
