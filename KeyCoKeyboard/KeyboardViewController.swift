@@ -860,23 +860,21 @@ class KeyboardViewController: UIInputViewController {
                 self?.cancelReplyFlow()
             }),
             .init(
-                style: .text(title: replySettings.sentiment, symbolName: "chevron.down", isPrimary: false),
-                menu: makeSentimentMenu(),
-                showsMenuAsPrimaryAction: true
-            ),
-            .init(
-                style: .text(title: replySettings.tone, symbolName: "chevron.down", isPrimary: false),
-                menu: makeToneMenu(),
-                showsMenuAsPrimaryAction: true
-            ),
-            .init(
-                style: .text(title: replySettings.length, symbolName: "chevron.down", isPrimary: false),
-                menu: makeLengthMenu(),
+                style: .text(title: replyFilterSummaryTitle(), symbolName: "chevron.down", isPrimary: false),
+                menu: makeFilterMenu(),
                 showsMenuAsPrimaryAction: true
             ),
             .init(style: .text(title: "Generate", symbolName: "sparkles", isPrimary: true), action: { [weak self] in
                 self?.generateReply()
             })
+        ])
+    }
+
+    private func makeFilterMenu() -> UIMenu {
+        UIMenu(title: "Reply Style", children: [
+            makeSentimentMenu(),
+            makeLengthMenu(),
+            makeToneMenu()
         ])
     }
 
@@ -886,7 +884,7 @@ class KeyboardViewController: UIInputViewController {
                 self?.setReplySentiment(option)
             }
         }
-        return UIMenu(title: "Sentiment", children: actions)
+        return UIMenu(title: "Sentiment", options: .displayInline, children: actions)
     }
 
     private func makeToneMenu() -> UIMenu {
@@ -895,7 +893,7 @@ class KeyboardViewController: UIInputViewController {
                 self?.setReplyTone(option)
             }
         }
-        return UIMenu(title: "Tone", children: actions)
+        return UIMenu(title: "Tone", options: .displayInline, children: actions)
     }
 
     private func makeLengthMenu() -> UIMenu {
@@ -904,7 +902,11 @@ class KeyboardViewController: UIInputViewController {
                 self?.setReplyLength(option)
             }
         }
-        return UIMenu(title: "Length", children: actions)
+        return UIMenu(title: "Length", options: .displayInline, children: actions)
+    }
+
+    private func replyFilterSummaryTitle() -> String {
+        "\(replySettings.sentiment), \(replySettings.length), \(replySettings.tone)"
     }
 
     private func setReplySentiment(_ option: String) {
@@ -940,18 +942,8 @@ class KeyboardViewController: UIInputViewController {
                 self?.cancelReplyFlow()
             }),
             .init(
-                style: .text(title: replySettings.sentiment, symbolName: "chevron.down", isPrimary: false),
-                menu: makeSentimentMenu(),
-                showsMenuAsPrimaryAction: true
-            ),
-            .init(
-                style: .text(title: replySettings.tone, symbolName: "chevron.down", isPrimary: false),
-                menu: makeToneMenu(),
-                showsMenuAsPrimaryAction: true
-            ),
-            .init(
-                style: .text(title: replySettings.length, symbolName: "chevron.down", isPrimary: false),
-                menu: makeLengthMenu(),
+                style: .text(title: replyFilterSummaryTitle(), symbolName: "chevron.down", isPrimary: false),
+                menu: makeFilterMenu(),
                 showsMenuAsPrimaryAction: true
             ),
             .init(style: .icon(symbolName: "arrow.clockwise", accessibilityLabel: "Reload"), action: { [weak self] in
