@@ -75,7 +75,8 @@ final class ReplyEmptyStateView: UIView {
             stackView.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 16),
             stackView.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -16),
             stackView.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -16),
-            stackView.centerXAnchor.constraint(equalTo: centerXAnchor)
+            stackView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            stackView.centerYAnchor.constraint(equalTo: centerYAnchor, constant: 8)
         ])
     }
 }

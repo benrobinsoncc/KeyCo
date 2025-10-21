@@ -227,6 +227,7 @@ final class ActionContainerView: UIView {
         buttonActions.removeAll()
 
         var needsSpacer = true
+        var arrangedButtons: [UIButton] = []
 
         for configuration in configurations {
             let button: UIButton
@@ -261,6 +262,17 @@ final class ActionContainerView: UIView {
             }
 
             buttonStack.addArrangedSubview(button)
+            arrangedButtons.append(button)
+        }
+
+        // Ensure horizontal spacing between buttons
+        for (index, button) in arrangedButtons.enumerated() where index > 0 {
+            let spacer = UIView()
+            spacer.translatesAutoresizingMaskIntoConstraints = false
+            spacer.widthAnchor.constraint(equalToConstant: 12).isActive = true
+            if let insertionIndex = buttonStack.arrangedSubviews.firstIndex(of: button) {
+                buttonStack.insertArrangedSubview(spacer, at: insertionIndex)
+            }
         }
     }
 
@@ -326,14 +338,17 @@ final class ActionContainerView: UIView {
                 UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold),
                 forImageIn: .normal
             )
+            let secondaryBackground = UIColor { trait in
+                trait.userInterfaceStyle == .dark ? UIColor.secondarySystemBackground : UIColor.systemGray5
+            }
             button.tintColor = isPrimary ? UIColor { trait in
                 trait.userInterfaceStyle == .dark ? UIColor.black : UIColor.white
             } : .label
             if symbolName == "chevron.down" {
                 button.semanticContentAttribute = .forceRightToLeft
-                button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 14, bottom: 0, right: 14)
-                button.imageEdgeInsets = UIEdgeInsets(top: 0, left: -4, bottom: 0, right: 8)
-                button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 8, bottom: 0, right: -8)
+                button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
+                button.imageEdgeInsets = UIEdgeInsets(top: 0, left: -6, bottom: 0, right: 10)
+                button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: -10)
             } else {
                 button.imageEdgeInsets = UIEdgeInsets(top: 0, left: -4, bottom: 0, right: 4)
                 button.semanticContentAttribute = .forceLeftToRight

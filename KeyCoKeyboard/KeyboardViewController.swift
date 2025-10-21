@@ -47,20 +47,95 @@ class KeyboardViewController: UIInputViewController {
     private var replySettings = ReplySettings()
     private var pastedMessage: String = ""
 
-    private let replySentimentOptions = ["Positive", "Neutral", "Negative"]
-    private let replyToneOptions = ["Professional", "Casual", "Friendly"]
-    private let replyLengthOptions = ["Short", "Medium", "Long"]
-
     private enum ReplyStep {
         case empty
         case preview
         case generated
     }
 
+    private enum ReplySentimentOption: CaseIterable {
+        case good, ok, bad
+
+        var menuTitle: String {
+            switch self {
+            case .good: return "Good"
+            case .ok: return "Ok"
+            case .bad: return "Bad"
+            }
+        }
+
+        var summaryTitle: String { menuTitle }
+
+        var instructionText: String {
+            switch self {
+            case .good: return "Be positive, upbeat, and enthusiastic."
+            case .ok: return "Maintain a neutral, balanced tone."
+            case .bad: return "Be critical or express concerns appropriately."
+            }
+        }
+    }
+
+    private enum ReplyLengthOption: CaseIterable {
+        case short, medium, long
+
+        var menuTitle: String {
+            switch self {
+            case .short: return "Short"
+            case .medium: return "Medium"
+            case .long: return "Long"
+            }
+        }
+
+        var summaryTitle: String {
+            switch self {
+            case .medium: return "Med"
+            default: return menuTitle
+            }
+        }
+
+        var instructionText: String {
+            switch self {
+            case .short: return "Keep your reply brief (1-2 sentences)."
+            case .medium: return "Write a medium-length reply (2-4 sentences)."
+            case .long: return "Write a detailed, thorough reply (4+ sentences)."
+            }
+        }
+    }
+
+    private enum ReplyToneOption: CaseIterable {
+        case professional, casual, friendly
+
+        var menuTitle: String {
+            switch self {
+            case .professional: return "Professional"
+            case .casual: return "Casual"
+            case .friendly: return "Friendly"
+            }
+        }
+
+        var summaryTitle: String {
+            switch self {
+            case .professional: return "Pro"
+            case .casual: return menuTitle
+            case .friendly:
+                let base = menuTitle
+                return base.count > 6 ? String(base.prefix(6)) : base
+            }
+        }
+
+        var instructionText: String {
+            switch self {
+            case .professional: return "Use professional, formal language."
+            case .casual: return "Use casual, relaxed language."
+            case .friendly: return "Be warm, friendly, and personable."
+            }
+        }
+    }
+
     private struct ReplySettings {
-        var sentiment: String = "Neutral"
-        var tone: String = "Professional"
-        var length: String = "Medium"
+        var sentiment: ReplySentimentOption = .ok
+        var tone: ReplyToneOption = .professional
+        var length: ReplyLengthOption = .medium
     }
 
     // Response content views
@@ -871,7 +946,7 @@ class KeyboardViewController: UIInputViewController {
     }
 
     private func makeFilterMenu() -> UIMenu {
-        UIMenu(title: "Reply Style", children: [
+        UIMenu(title: "Reply style", children: [
             makeSentimentMenu(),
             makeLengthMenu(),
             makeToneMenu()
@@ -879,8 +954,8 @@ class KeyboardViewController: UIInputViewController {
     }
 
     private func makeSentimentMenu() -> UIMenu {
-        let actions = replySentimentOptions.map { option in
-            UIAction(title: option, state: option == replySettings.sentiment ? .on : .off) { [weak self] _ in
+        let actions = ReplySentimentOption.allCases.map { option in
+            UIAction(title: option.menuTitle, state: option == replySettings.sentiment ? .on : .off) { [weak self] _ in
                 self?.setReplySentiment(option)
             }
         }
@@ -888,8 +963,8 @@ class KeyboardViewController: UIInputViewController {
     }
 
     private func makeToneMenu() -> UIMenu {
-        let actions = replyToneOptions.map { option in
-            UIAction(title: option, state: option == replySettings.tone ? .on : .off) { [weak self] _ in
+        let actions = ReplyToneOption.allCases.map { option in
+            UIAction(title: option.menuTitle, state: option == replySettings.tone ? .on : .off) { [weak self] _ in
                 self?.setReplyTone(option)
             }
         }
@@ -897,8 +972,8 @@ class KeyboardViewController: UIInputViewController {
     }
 
     private func makeLengthMenu() -> UIMenu {
-        let actions = replyLengthOptions.map { option in
-            UIAction(title: option, state: option == replySettings.length ? .on : .off) { [weak self] _ in
+        let actions = ReplyLengthOption.allCases.map { option in
+            UIAction(title: option.menuTitle, state: option == replySettings.length ? .on : .off) { [weak self] _ in
                 self?.setReplyLength(option)
             }
         }
@@ -906,20 +981,24 @@ class KeyboardViewController: UIInputViewController {
     }
 
     private func replyFilterSummaryTitle() -> String {
-        "\(replySettings.sentiment), \(replySettings.length), \(replySettings.tone)"
+        [
+            replySettings.sentiment.summaryTitle,
+            replySettings.length.summaryTitle,
+            replySettings.tone.summaryTitle
+        ].joined(separator: " · ")
     }
 
-    private func setReplySentiment(_ option: String) {
+    private func setReplySentiment(_ option: ReplySentimentOption) {
         replySettings.sentiment = option
         refreshReplyButtonsForCurrentStep()
     }
 
-    private func setReplyTone(_ option: String) {
+    private func setReplyTone(_ option: ReplyToneOption) {
         replySettings.tone = option
         refreshReplyButtonsForCurrentStep()
     }
 
-    private func setReplyLength(_ option: String) {
+    private func setReplyLength(_ option: ReplyLengthOption) {
         replySettings.length = option
         refreshReplyButtonsForCurrentStep()
     }
@@ -962,23 +1041,9 @@ class KeyboardViewController: UIInputViewController {
         updateReplyGeneratedButtons()
 
         // Build prompt based on settings
-        let lengthInstruction = switch replySettings.length {
-        case "Short": "Keep your reply brief (1-2 sentences)."
-        case "Long": "Write a detailed, thorough reply (4+ sentences)."
-        default: "Write a medium-length reply (2-4 sentences)."
-        }
-
-        let sentimentInstruction = switch replySettings.sentiment {
-        case "Positive": "Be positive, upbeat, and enthusiastic."
-        case "Negative": "Be critical or express concerns appropriately."
-        default: "Maintain a neutral, balanced tone."
-        }
-
-        let toneInstruction = switch replySettings.tone {
-        case "Casual": "Use casual, relaxed language."
-        case "Friendly": "Be warm, friendly, and personable."
-        default: "Use professional, formal language."
-        }
+        let lengthInstruction = replySettings.length.instructionText
+        let sentimentInstruction = replySettings.sentiment.instructionText
+        let toneInstruction = replySettings.tone.instructionText
 
         let prompt = """
         Generate a reply to the following message. \(lengthInstruction) \(sentimentInstruction) \(toneInstruction)
