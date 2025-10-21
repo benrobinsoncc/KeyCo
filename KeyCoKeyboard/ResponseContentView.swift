@@ -1,6 +1,5 @@
 import UIKit
 import SwiftUI
-import AnimateText
 
 /// Content view for displaying mode title and response text
 final class ResponseContentView: UIView {

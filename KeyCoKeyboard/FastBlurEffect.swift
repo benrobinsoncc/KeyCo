@@ -1,7 +1,9 @@
 import SwiftUI
-import AnimateText
+// import AnimateText
 
 /// Custom fast blur effect for quicker text animations
+/// NOTE: Not currently used - AnimateText package removed
+/*
 public struct FastBlurEffect: ATTextAnimateEffect {
     public var data: ATElementData
     public var userInfo: Any?
@@ -18,3 +20,4 @@ public struct FastBlurEffect: ATTextAnimateEffect {
             .animation(.easeInOut(duration: 0.25).delay(Double(data.index) * 0.02), value: data.value) // Much faster!
     }
 }
+*/

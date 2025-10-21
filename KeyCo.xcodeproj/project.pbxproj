@@ -14,8 +14,10 @@
 		A1000009000000000000001 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000010000000000000001 /* KeyboardViewController.swift */; };
 		A5000001000000000000001 /* ActionContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5000002000000000000001 /* ActionContainerView.swift */; };
 		A6000001000000000000001 /* ResponseContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6000002000000000000001 /* ResponseContentView.swift */; };
-		A7000003000000000000001 /* AnimateText in Frameworks */ = {isa = PBXBuildFile; productRef = A7000002000000000000001 /* AnimateText */; };
 		A8000002000000000000001 /* FastBlurEffect.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8000001000000000000001 /* FastBlurEffect.swift */; };
+		A9000001000000000000001 /* ReplyConfigView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9000002000000000000001 /* ReplyConfigView.swift */; };
+		AB000001000000000000001 /* ReplyEmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000002000000000000001 /* ReplyEmptyStateView.swift */; };
+		AC000001000000000000001 /* ReplyMessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC000002000000000000001 /* ReplyMessageView.swift */; };
 		A1000011000000000000001 /* KeyCoKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A1000012000000000000001 /* KeyCoKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -55,6 +57,9 @@
 		A5000002000000000000001 /* ActionContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionContainerView.swift; sourceTree = "<group>"; };
 		A6000002000000000000001 /* ResponseContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseContentView.swift; sourceTree = "<group>"; };
 		A8000001000000000000001 /* FastBlurEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastBlurEffect.swift; sourceTree = "<group>"; };
+		A9000002000000000000001 /* ReplyConfigView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplyConfigView.swift; sourceTree = "<group>"; };
+		AB000002000000000000001 /* ReplyEmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplyEmptyStateView.swift; sourceTree = "<group>"; };
+		AC000002000000000000001 /* ReplyMessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplyMessageView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -69,7 +74,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A7000003000000000000001 /* AnimateText in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -102,6 +106,9 @@
 				A5000002000000000000001 /* ActionContainerView.swift */,
 				A1000010000000000000001 /* KeyboardViewController.swift */,
 				A6000002000000000000001 /* ResponseContentView.swift */,
+				A9000002000000000000001 /* ReplyConfigView.swift */,
+				AB000002000000000000001 /* ReplyEmptyStateView.swift */,
+				AC000002000000000000001 /* ReplyMessageView.swift */,
 				A8000001000000000000001 /* FastBlurEffect.swift */,
 				A1000018000000000000001 /* Info.plist */,
 			);
@@ -142,7 +149,6 @@
 			);
 			name = KeyCoKeyboard;
 			packageProductDependencies = (
-				A7000002000000000000001 /* AnimateText */,
 			);
 			productName = KeyCoKeyboard;
 			productReference = A1000012000000000000001 /* KeyCoKeyboard.appex */;
@@ -195,7 +201,6 @@
 			);
 			mainGroup = A1000021000000000000001;
 			packageReferences = (
-				A7000001000000000000001 /* XCRemoteSwiftPackageReference "AnimateText" */,
 			);
 			productRefGroup = A1000024000000000000001 /* Products */;
 			projectDirPath = "";
@@ -243,6 +248,9 @@
 				A5000001000000000000001 /* ActionContainerView.swift in Sources */,
 				A1000009000000000000001 /* KeyboardViewController.swift in Sources */,
 				A6000001000000000000001 /* ResponseContentView.swift in Sources */,
+				A9000001000000000000001 /* ReplyConfigView.swift in Sources */,
+				AB000001000000000000001 /* ReplyEmptyStateView.swift in Sources */,
+				AC000001000000000000001 /* ReplyMessageView.swift in Sources */,
 				A8000002000000000000001 /* FastBlurEffect.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -516,25 +524,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		A7000001000000000000001 /* XCRemoteSwiftPackageReference "AnimateText" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/jasudev/AnimateText.git";
-			requirement = {
-				branch = main;
-				kind = branch;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		A7000002000000000000001 /* AnimateText */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A7000001000000000000001 /* XCRemoteSwiftPackageReference "AnimateText" */;
-			productName = AnimateText;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A1000014000000000000001 /* Project object */;
 }

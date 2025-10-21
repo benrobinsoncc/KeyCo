@@ -38,10 +38,11 @@ final class ActionContainerView: UIView {
     private var buttonTopSpacing: CGFloat = 12
     private var buttonBottomInset: CGFloat = 12
     private var buttonSideInset: CGFloat = 12
-    private var buttonCornerRadius: CGFloat = 20
+    private var buttonCornerRadius: CGFloat = 16
     private var contentTopConstraint: NSLayoutConstraint!
     private var contentLeadingConstraint: NSLayoutConstraint!
     private var contentTrailingConstraint: NSLayoutConstraint!
+    private var contentBottomConstraint: NSLayoutConstraint!
     private var dividerTopConstraint: NSLayoutConstraint!
     private var buttonTopConstraint: NSLayoutConstraint!
     private var buttonLeadingConstraint: NSLayoutConstraint!
@@ -107,6 +108,7 @@ final class ActionContainerView: UIView {
         contentLeadingConstraint = contentContainer.leadingAnchor.constraint(equalTo: backgroundView.leadingAnchor, constant: contentInsets.left)
         contentTrailingConstraint = contentContainer.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor, constant: -contentInsets.right)
         dividerTopConstraint = dividerView.topAnchor.constraint(equalTo: contentContainer.bottomAnchor, constant: dividerSpacing)
+        contentBottomConstraint = contentContainer.bottomAnchor.constraint(equalTo: dividerView.topAnchor, constant: -dividerSpacing)
         buttonTopConstraint = buttonStack.topAnchor.constraint(equalTo: dividerView.bottomAnchor, constant: buttonTopSpacing)
 
         buttonLeadingConstraint = buttonStack.leadingAnchor.constraint(equalTo: backgroundView.leadingAnchor, constant: buttonSideInset)
@@ -121,6 +123,7 @@ final class ActionContainerView: UIView {
             dividerView.leadingAnchor.constraint(equalTo: backgroundView.leadingAnchor),
             dividerView.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor),
             dividerView.heightAnchor.constraint(equalToConstant: 1),
+            contentBottomConstraint,
             buttonTopConstraint,
             buttonLeadingConstraint,
             buttonTrailingConstraint,
@@ -182,7 +185,7 @@ final class ActionContainerView: UIView {
         buttonTopSpacing: CGFloat,
         buttonSideInset: CGFloat = 12,
         buttonBottomInset: CGFloat = 12,
-        buttonCornerRadius: CGFloat = 20
+        buttonCornerRadius: CGFloat = 16
     ) {
         contentInsets = insets
         self.dividerSpacing = dividerSpacing
@@ -193,16 +196,12 @@ final class ActionContainerView: UIView {
         contentTopConstraint.constant = insets.top
         contentLeadingConstraint.constant = insets.left
         contentTrailingConstraint.constant = -insets.right
+        contentBottomConstraint.constant = -dividerSpacing
         dividerTopConstraint.constant = dividerSpacing
         buttonTopConstraint.constant = buttonTopSpacing
         buttonLeadingConstraint.constant = buttonSideInset
         buttonTrailingConstraint.constant = -buttonSideInset
         buttonBottomConstraint.constant = -buttonBottomInset
-        buttonStack.arrangedSubviews.forEach { view in
-            if let button = view as? UIButton {
-                button.layer.cornerRadius = buttonCornerRadius
-            }
-        }
         layoutIfNeeded()
     }
 

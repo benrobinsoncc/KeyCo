@@ -40,8 +40,26 @@ class KeyboardViewController: UIInputViewController {
     private var googleWebView: WKWebView?
     private var currentGoogleURL: URL?
 
+    // Reply mode views
+    private var replyEmptyStateView: ReplyEmptyStateView!
+    private var replyMessageView: ReplyMessageView!
+    private var replyCurrentStep: ReplyStep = .empty
+    private var replySettings = ReplySettings()
+    private var pastedMessage: String = ""
+
+    private enum ReplyStep {
+        case empty
+        case preview
+        case generated
+    }
+
+    private struct ReplySettings {
+        var sentiment: String = "Neutral"
+        var tone: String = "Professional"
+        var length: String = "Medium"
+    }
+
     // Response content views
-    private var replyContentView: ResponseContentView!
     private var rewriteContentView: ResponseContentView!
     private var chatgptContentView: ResponseContentView!
 
@@ -144,26 +162,26 @@ class KeyboardViewController: UIInputViewController {
         ])
 
         // Create 2x2 grid of buttons
-        let spacing: CGFloat = 2
+        let spacing: CGFloat = 8
         let padding: CGFloat = 3
 
         // Reply button (top-left)
-        let replyButton = createActionButton(title: "Reply", color: .systemBlue)
+        let replyButton = createActionButton(title: "Reply", color: .white)
         replyButton.addTarget(self, action: #selector(replyTapped), for: .touchUpInside)
         homeView.addSubview(replyButton)
 
         // Rewrite button (top-right)
-        let rewriteButton = createActionButton(title: "Rewrite", color: .systemGreen)
+        let rewriteButton = createActionButton(title: "Rewrite", color: .white)
         rewriteButton.addTarget(self, action: #selector(rewriteTapped), for: .touchUpInside)
         homeView.addSubview(rewriteButton)
 
         // Google button (bottom-left)
-        let googleButton = createActionButton(title: "Google", color: .systemOrange)
+        let googleButton = createActionButton(title: "Google", color: .white)
         googleButton.addTarget(self, action: #selector(googleTapped), for: .touchUpInside)
         homeView.addSubview(googleButton)
 
         // ChatGPT button (bottom-right)
-        let chatgptButton = createActionButton(title: "ChatGPT", color: .systemPurple)
+        let chatgptButton = createActionButton(title: "ChatGPT", color: .white)
         chatgptButton.addTarget(self, action: #selector(chatgptTapped), for: .touchUpInside)
         homeView.addSubview(chatgptButton)
 
@@ -211,7 +229,7 @@ class KeyboardViewController: UIInputViewController {
         button.setTitle(title, for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
         button.backgroundColor = color
-        button.setTitleColor(.white, for: .normal)
+        button.setTitleColor(.label, for: .normal)
         button.layer.cornerRadius = 16
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
@@ -230,20 +248,22 @@ class KeyboardViewController: UIInputViewController {
             replyView.bottomAnchor.constraint(equalTo: contentArea.bottomAnchor)
         ])
 
-        // Create response content view
-        replyContentView = ResponseContentView()
-        replyContentView.title = "REPLY"
-        replyContentView.responseText = ""
+        // Create empty state view
+        replyEmptyStateView = ReplyEmptyStateView()
 
+        // Create message view for preview and generated reply
+        replyMessageView = ReplyMessageView()
+
+        // Initially show empty state (Step 1)
         replyContainer = createActionContainer(
             title: nil,
-            contentView: replyContentView,
+            contentView: replyEmptyStateView,
             buttonConfigs: [
                 .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
                     self?.switchToMode(.home, height: .small)
                 }),
-                .init(style: .text(title: "Generate", symbolName: "sparkles", isPrimary: true), action: { [weak self] in
-                    self?.handlePlaceholderAction(named: "Generate Reply")
+                .init(style: .text(title: "Paste", symbolName: nil, isPrimary: true), action: { [weak self] in
+                    self?.handleReplyPaste()
                 })
             ],
             showsToggle: true,
@@ -546,7 +566,7 @@ class KeyboardViewController: UIInputViewController {
             container.setContentView(UIView())
         }
         let buttonTopSpacing: CGFloat = 12
-        let dividerSpacing: CGFloat = contentInsets.bottom > 0 ? 12 : 0
+        let dividerSpacing: CGFloat = 0
         container.setContentLayout(
             insets: contentInsets,
             dividerSpacing: dividerSpacing,
@@ -757,6 +777,275 @@ class KeyboardViewController: UIInputViewController {
         let text = chatgptContentView.responseText
         guard !text.isEmpty, text != "Loading...", !text.hasPrefix("Error:") else { return }
         textDocumentProxy.insertText("\n\n\(text)")
+    }
+
+    // MARK: - Reply Mode Handlers
+
+    private func handleReplyPaste() {
+        // Read clipboard
+        guard let clipboardText = UIPasteboard.general.string, !clipboardText.isEmpty else {
+            // Show error in content area
+            showReplyEmptyClipboardError()
+            return
+        }
+
+        pastedMessage = clipboardText
+        replyCurrentStep = .preview
+        showReplyPreview()
+    }
+
+    private func showReplyEmptyClipboardError() {
+        // Create error view (reuse empty state but with error message)
+        let errorView = UIView()
+        errorView.backgroundColor = .clear
+
+        let label = UILabel()
+        label.text = "Clipboard is empty. Copy a message first."
+        label.font = .systemFont(ofSize: 15, weight: .regular)
+        label.textColor = .systemRed
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.translatesAutoresizingMaskIntoConstraints = false
+        errorView.addSubview(label)
+
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: errorView.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: errorView.centerYAnchor),
+            label.leadingAnchor.constraint(greaterThanOrEqualTo: errorView.leadingAnchor, constant: 20),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: errorView.trailingAnchor, constant: -20)
+        ])
+
+        replyContainer.setContentView(errorView)
+
+        // Reset back to empty state after 2 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            self?.replyContainer.setContentView(self!.replyEmptyStateView)
+        }
+    }
+
+    private func showReplyPreview() {
+        // Show Step 2: message preview with settings buttons
+        replyMessageView.message = pastedMessage
+
+        replyContainer.setContentView(replyMessageView)
+        replyContainer.configureButtons([
+            .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
+                self?.switchToMode(.home, height: .small)
+            }),
+            .init(style: .text(title: replySettings.sentiment, symbolName: nil, isPrimary: false), action: { [weak self] in
+                self?.showSentimentMenu()
+            }),
+            .init(style: .text(title: replySettings.tone, symbolName: nil, isPrimary: false), action: { [weak self] in
+                self?.showToneMenu()
+            }),
+            .init(style: .text(title: replySettings.length, symbolName: nil, isPrimary: false), action: { [weak self] in
+                self?.showLengthMenu()
+            }),
+            .init(style: .text(title: "Generate", symbolName: nil, isPrimary: true), action: { [weak self] in
+                self?.generateReply()
+            })
+        ])
+    }
+
+    private func showSentimentMenu() {
+        // Cycle through sentiment options
+        replySettings.sentiment = switch replySettings.sentiment {
+        case "Positive": "Neutral"
+        case "Neutral": "Negative"
+        default: "Positive"
+        }
+
+        // Update buttons to reflect new value
+        if replyCurrentStep == .preview {
+            showReplyPreview()
+        } else if replyCurrentStep == .generated {
+            updateReplyGeneratedButtons()
+        }
+    }
+
+    private func showToneMenu() {
+        // Cycle through tone options
+        replySettings.tone = switch replySettings.tone {
+        case "Professional": "Casual"
+        case "Casual": "Friendly"
+        default: "Professional"
+        }
+
+        // Update buttons to reflect new value
+        if replyCurrentStep == .preview {
+            showReplyPreview()
+        } else if replyCurrentStep == .generated {
+            updateReplyGeneratedButtons()
+        }
+    }
+
+    private func showLengthMenu() {
+        // Cycle through length options
+        replySettings.length = switch replySettings.length {
+        case "Short": "Medium"
+        case "Medium": "Long"
+        default: "Short"
+        }
+
+        // Update buttons to reflect new value
+        if replyCurrentStep == .preview {
+            showReplyPreview()
+        } else if replyCurrentStep == .generated {
+            updateReplyGeneratedButtons()
+        }
+    }
+
+    private func updateReplyGeneratedButtons() {
+        // Helper to update buttons in Step 3 without regenerating
+        replyContainer.configureButtons([
+            .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
+                self?.switchToMode(.home, height: .small)
+            }),
+            .init(style: .text(title: replySettings.sentiment, symbolName: nil, isPrimary: false), action: { [weak self] in
+                self?.showSentimentMenu()
+            }),
+            .init(style: .text(title: replySettings.tone, symbolName: nil, isPrimary: false), action: { [weak self] in
+                self?.showToneMenu()
+            }),
+            .init(style: .text(title: replySettings.length, symbolName: nil, isPrimary: false), action: { [weak self] in
+                self?.showLengthMenu()
+            }),
+            .init(style: .icon(symbolName: "arrow.clockwise", accessibilityLabel: "Reload"), action: { [weak self] in
+                self?.generateReply()
+            }),
+            .init(style: .text(title: "Insert", symbolName: nil, isPrimary: true), action: { [weak self] in
+                self?.insertReply()
+            })
+        ])
+    }
+
+    private func generateReply() {
+        // Show loading state
+        replyMessageView.message = "Loading..."
+        replyCurrentStep = .generated
+
+        // Build prompt based on settings
+        let lengthInstruction = switch replySettings.length {
+        case "Short": "Keep your reply brief (1-2 sentences)."
+        case "Long": "Write a detailed, thorough reply (4+ sentences)."
+        default: "Write a medium-length reply (2-4 sentences)."
+        }
+
+        let sentimentInstruction = switch replySettings.sentiment {
+        case "Positive": "Be positive, upbeat, and enthusiastic."
+        case "Negative": "Be critical or express concerns appropriately."
+        default: "Maintain a neutral, balanced tone."
+        }
+
+        let toneInstruction = switch replySettings.tone {
+        case "Casual": "Use casual, relaxed language."
+        case "Friendly": "Be warm, friendly, and personable."
+        default: "Use professional, formal language."
+        }
+
+        let prompt = """
+        Generate a reply to the following message. \(lengthInstruction) \(sentimentInstruction) \(toneInstruction)
+
+        Message to reply to:
+        \(pastedMessage)
+
+        Reply:
+        """
+
+        // Make API request
+        let url = URL(string: "https://api.openai.com/v1/chat/completions")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(chatGPTAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let requestBody: [String: Any] = [
+            "model": "gpt-4",
+            "messages": [
+                ["role": "user", "content": prompt]
+            ],
+            "max_tokens": 500
+        ]
+
+        guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            replyMessageView.message = "Error: Failed to create request"
+            return
+        }
+
+        request.httpBody = httpBody
+
+        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+
+                if let error = error {
+                    self.replyMessageView.message = "Error: \(error.localizedDescription)"
+                    NSLog("[KeyCo] Reply generation error: %@", error.localizedDescription)
+                    return
+                }
+
+                guard let data = data else {
+                    self.replyMessageView.message = "Error: No data received"
+                    return
+                }
+
+                do {
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let choices = json["choices"] as? [[String: Any]],
+                       let firstChoice = choices.first,
+                       let message = firstChoice["message"] as? [String: Any],
+                       let content = message["content"] as? String {
+                        self.replyMessageView.message = content.trimmingCharacters(in: .whitespacesAndNewlines)
+                        self.showReplyGenerated()
+                    } else {
+                        if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                           let error = json["error"] as? [String: Any],
+                           let message = error["message"] as? String {
+                            self.replyMessageView.message = "API Error: \(message)"
+                            NSLog("[KeyCo] Reply generation API error: %@", message)
+                        } else {
+                            self.replyMessageView.message = "Error: Unexpected response format"
+                        }
+                    }
+                } catch {
+                    self.replyMessageView.message = "Error: Failed to parse response"
+                    NSLog("[KeyCo] Reply generation parse error: %@", error.localizedDescription)
+                }
+            }
+        }
+
+        task.resume()
+    }
+
+    private func showReplyGenerated() {
+        // Update buttons for Step 3: show Reload and Insert
+        replyContainer.configureButtons([
+            .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
+                self?.switchToMode(.home, height: .small)
+            }),
+            .init(style: .text(title: replySettings.sentiment, symbolName: nil, isPrimary: false), action: { [weak self] in
+                self?.showSentimentMenu()
+            }),
+            .init(style: .text(title: replySettings.tone, symbolName: nil, isPrimary: false), action: { [weak self] in
+                self?.showToneMenu()
+            }),
+            .init(style: .text(title: replySettings.length, symbolName: nil, isPrimary: false), action: { [weak self] in
+                self?.showLengthMenu()
+            }),
+            .init(style: .icon(symbolName: "arrow.clockwise", accessibilityLabel: "Reload"), action: { [weak self] in
+                self?.generateReply()
+            }),
+            .init(style: .text(title: "Insert", symbolName: nil, isPrimary: true), action: { [weak self] in
+                self?.insertReply()
+            })
+        ])
+    }
+
+    private func insertReply() {
+        let text = replyMessageView.message
+        guard !text.isEmpty, text != "Loading...", !text.hasPrefix("Error:") else { return }
+        textDocumentProxy.insertText(text)
+        switchToMode(.home, height: .small)
     }
 }
 
