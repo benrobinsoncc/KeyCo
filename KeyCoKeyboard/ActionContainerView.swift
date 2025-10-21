@@ -13,7 +13,21 @@ final class ActionContainerView: UIView {
         }
 
         let style: DisplayStyle
-        let action: () -> Void
+        let action: (() -> Void)?
+        let menu: UIMenu?
+        let showsMenuAsPrimaryAction: Bool
+
+        init(
+            style: DisplayStyle,
+            action: (() -> Void)? = nil,
+            menu: UIMenu? = nil,
+            showsMenuAsPrimaryAction: Bool = false
+        ) {
+            self.style = style
+            self.action = action
+            self.menu = menu
+            self.showsMenuAsPrimaryAction = showsMenuAsPrimaryAction
+        }
     }
 
     // MARK: - Properties
@@ -38,7 +52,7 @@ final class ActionContainerView: UIView {
     private var buttonTopSpacing: CGFloat = 12
     private var buttonBottomInset: CGFloat = 12
     private var buttonSideInset: CGFloat = 12
-    private var buttonCornerRadius: CGFloat = 16
+    private var buttonCornerRadius: CGFloat = 18
     private var contentTopConstraint: NSLayoutConstraint!
     private var contentLeadingConstraint: NSLayoutConstraint!
     private var contentTrailingConstraint: NSLayoutConstraint!
@@ -215,11 +229,11 @@ final class ActionContainerView: UIView {
         var needsSpacer = true
 
         for configuration in configurations {
+            let button: UIButton
+
             switch configuration.style {
             case let .icon(symbolName, accessibilityLabel):
-                let button = createIconButton(symbolName: symbolName, accessibilityLabel: accessibilityLabel)
-                buttonStack.addArrangedSubview(button)
-                buttonActions[button] = configuration.action
+                button = createIconButton(symbolName: symbolName, accessibilityLabel: accessibilityLabel)
             case let .text(title, symbolName, isPrimary):
                 if needsSpacer {
                     let spacer = UIView()
@@ -229,14 +243,24 @@ final class ActionContainerView: UIView {
                     buttonStack.addArrangedSubview(spacer)
                     needsSpacer = false
                 }
-                let button = createTextButton(
+                button = createTextButton(
                     title: title,
                     symbolName: symbolName,
                     isPrimary: isPrimary
                 )
-                buttonStack.addArrangedSubview(button)
-                buttonActions[button] = configuration.action
             }
+
+            if let menu = configuration.menu {
+                button.menu = menu
+                button.showsMenuAsPrimaryAction = configuration.showsMenuAsPrimaryAction
+            }
+
+            if let action = configuration.action {
+                button.addTarget(self, action: #selector(actionButtonTapped), for: .touchUpInside)
+                buttonActions[button] = action
+            }
+
+            buttonStack.addArrangedSubview(button)
         }
     }
 
@@ -270,6 +294,8 @@ final class ActionContainerView: UIView {
         }
         button.tintColor = .label
         button.layer.cornerRadius = 15
+        button.layer.cornerCurve = .continuous
+        button.clipsToBounds = true
         button.setImage(UIImage(systemName: symbolName), for: .normal)
         button.widthAnchor.constraint(equalToConstant: 30).isActive = true
         button.heightAnchor.constraint(equalToConstant: 30).isActive = true
@@ -280,7 +306,6 @@ final class ActionContainerView: UIView {
         button.accessibilityLabel = accessibilityLabel
         button.setContentHuggingPriority(.required, for: .horizontal)
         button.setContentCompressionResistancePriority(.required, for: .horizontal)
-        button.addTarget(self, action: #selector(actionButtonTapped), for: .touchUpInside)
         return button
     }
 
@@ -289,7 +314,9 @@ final class ActionContainerView: UIView {
         button.translatesAutoresizingMaskIntoConstraints = false
         button.heightAnchor.constraint(equalToConstant: 32).isActive = true
         button.layer.cornerRadius = buttonCornerRadius
-        button.titleLabel?.font = .systemFont(ofSize: 15, weight: isPrimary ? .semibold : .medium)
+        button.layer.cornerCurve = .continuous
+        button.clipsToBounds = true
+        button.titleLabel?.font = .systemFont(ofSize: isPrimary ? 15 : 13, weight: isPrimary ? .semibold : .medium)
         button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
         button.setTitle(title, for: .normal)
 
@@ -302,8 +329,16 @@ final class ActionContainerView: UIView {
             button.tintColor = isPrimary ? UIColor { trait in
                 trait.userInterfaceStyle == .dark ? UIColor.black : UIColor.white
             } : .label
-            button.imageEdgeInsets = UIEdgeInsets(top: 0, left: -4, bottom: 0, right: 4)
-            button.semanticContentAttribute = .forceLeftToRight
+            if symbolName == "chevron.down" {
+                button.semanticContentAttribute = .forceRightToLeft
+                button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 14, bottom: 0, right: 14)
+                button.imageEdgeInsets = UIEdgeInsets(top: 0, left: -4, bottom: 0, right: 8)
+                button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 8, bottom: 0, right: -8)
+            } else {
+                button.imageEdgeInsets = UIEdgeInsets(top: 0, left: -4, bottom: 0, right: 4)
+                button.semanticContentAttribute = .forceLeftToRight
+                button.titleEdgeInsets = .zero
+            }
         }
 
         if isPrimary {
@@ -318,7 +353,6 @@ final class ActionContainerView: UIView {
             button.setTitleColor(.label, for: .normal)
         }
 
-        button.addTarget(self, action: #selector(actionButtonTapped), for: .touchUpInside)
         button.setContentHuggingPriority(.required, for: .horizontal)
         button.setContentCompressionResistancePriority(.required, for: .horizontal)
         return button

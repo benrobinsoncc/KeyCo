@@ -47,6 +47,10 @@ class KeyboardViewController: UIInputViewController {
     private var replySettings = ReplySettings()
     private var pastedMessage: String = ""
 
+    private let replySentimentOptions = ["Positive", "Neutral", "Negative"]
+    private let replyToneOptions = ["Professional", "Casual", "Friendly"]
+    private let replyLengthOptions = ["Short", "Medium", "Long"]
+
     private enum ReplyStep {
         case empty
         case preview
@@ -258,19 +262,39 @@ class KeyboardViewController: UIInputViewController {
         replyContainer = createActionContainer(
             title: nil,
             contentView: replyEmptyStateView,
-            buttonConfigs: [
-                .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
-                    self?.switchToMode(.home, height: .small)
-                }),
-                .init(style: .text(title: "Paste", symbolName: nil, isPrimary: true), action: { [weak self] in
-                    self?.handleReplyPaste()
-                })
-            ],
+            buttonConfigs: replyInitialButtons(),
             showsToggle: true,
             contentInsets: UIEdgeInsets(top: 12, left: 12, bottom: 0, right: 12)
         )
         replyView.addSubview(replyContainer)
         pinContainer(replyContainer, to: replyView)
+    }
+
+    private func replyInitialButtons() -> [ActionContainerView.ActionButtonConfiguration] {
+        [
+            .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
+                self?.cancelReplyFlow()
+            }),
+            .init(style: .text(title: "Paste", symbolName: nil, isPrimary: true), action: { [weak self] in
+                self?.handleReplyPaste()
+            })
+        ]
+    }
+
+    private func resetReplyFlow() {
+        replyCurrentStep = .empty
+        replySettings = ReplySettings()
+        pastedMessage = ""
+        replyMessageView.message = ""
+
+        guard replyContainer != nil else { return }
+        replyContainer.setContentView(replyEmptyStateView)
+        replyContainer.configureButtons(replyInitialButtons())
+    }
+
+    private func cancelReplyFlow() {
+        resetReplyFlow()
+        switchToMode(.home, height: .small)
     }
 
     private func setupRewriteView() {
@@ -398,6 +422,7 @@ class KeyboardViewController: UIInputViewController {
     // MARK: - Actions
 
     @objc private func replyTapped() {
+        resetReplyFlow()
         switchToMode(.reply, height: .small)
     }
 
@@ -573,7 +598,7 @@ class KeyboardViewController: UIInputViewController {
             buttonTopSpacing: buttonTopSpacing,
             buttonSideInset: 12,
             buttonBottomInset: 12,
-            buttonCornerRadius: 20
+            buttonCornerRadius: 16
         )
         container.configureButtons(buttonConfigs)
         container.onToggle = showsToggle ? { [weak self] in
@@ -827,71 +852,84 @@ class KeyboardViewController: UIInputViewController {
         // Show Step 2: message preview with settings buttons
         replyMessageView.message = pastedMessage
 
+        replyCurrentStep = .preview
+
         replyContainer.setContentView(replyMessageView)
         replyContainer.configureButtons([
             .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
-                self?.switchToMode(.home, height: .small)
+                self?.cancelReplyFlow()
             }),
-            .init(style: .text(title: replySettings.sentiment, symbolName: nil, isPrimary: false), action: { [weak self] in
-                self?.showSentimentMenu()
-            }),
-            .init(style: .text(title: replySettings.tone, symbolName: nil, isPrimary: false), action: { [weak self] in
-                self?.showToneMenu()
-            }),
-            .init(style: .text(title: replySettings.length, symbolName: nil, isPrimary: false), action: { [weak self] in
-                self?.showLengthMenu()
-            }),
-            .init(style: .text(title: "Generate", symbolName: nil, isPrimary: true), action: { [weak self] in
+            .init(
+                style: .text(title: replySettings.sentiment, symbolName: "chevron.down", isPrimary: false),
+                menu: makeSentimentMenu(),
+                showsMenuAsPrimaryAction: true
+            ),
+            .init(
+                style: .text(title: replySettings.tone, symbolName: "chevron.down", isPrimary: false),
+                menu: makeToneMenu(),
+                showsMenuAsPrimaryAction: true
+            ),
+            .init(
+                style: .text(title: replySettings.length, symbolName: "chevron.down", isPrimary: false),
+                menu: makeLengthMenu(),
+                showsMenuAsPrimaryAction: true
+            ),
+            .init(style: .text(title: "Generate", symbolName: "sparkles", isPrimary: true), action: { [weak self] in
                 self?.generateReply()
             })
         ])
     }
 
-    private func showSentimentMenu() {
-        // Cycle through sentiment options
-        replySettings.sentiment = switch replySettings.sentiment {
-        case "Positive": "Neutral"
-        case "Neutral": "Negative"
-        default: "Positive"
+    private func makeSentimentMenu() -> UIMenu {
+        let actions = replySentimentOptions.map { option in
+            UIAction(title: option, state: option == replySettings.sentiment ? .on : .off) { [weak self] _ in
+                self?.setReplySentiment(option)
+            }
         }
-
-        // Update buttons to reflect new value
-        if replyCurrentStep == .preview {
-            showReplyPreview()
-        } else if replyCurrentStep == .generated {
-            updateReplyGeneratedButtons()
-        }
+        return UIMenu(title: "Sentiment", children: actions)
     }
 
-    private func showToneMenu() {
-        // Cycle through tone options
-        replySettings.tone = switch replySettings.tone {
-        case "Professional": "Casual"
-        case "Casual": "Friendly"
-        default: "Professional"
+    private func makeToneMenu() -> UIMenu {
+        let actions = replyToneOptions.map { option in
+            UIAction(title: option, state: option == replySettings.tone ? .on : .off) { [weak self] _ in
+                self?.setReplyTone(option)
+            }
         }
-
-        // Update buttons to reflect new value
-        if replyCurrentStep == .preview {
-            showReplyPreview()
-        } else if replyCurrentStep == .generated {
-            updateReplyGeneratedButtons()
-        }
+        return UIMenu(title: "Tone", children: actions)
     }
 
-    private func showLengthMenu() {
-        // Cycle through length options
-        replySettings.length = switch replySettings.length {
-        case "Short": "Medium"
-        case "Medium": "Long"
-        default: "Short"
+    private func makeLengthMenu() -> UIMenu {
+        let actions = replyLengthOptions.map { option in
+            UIAction(title: option, state: option == replySettings.length ? .on : .off) { [weak self] _ in
+                self?.setReplyLength(option)
+            }
         }
+        return UIMenu(title: "Length", children: actions)
+    }
 
-        // Update buttons to reflect new value
-        if replyCurrentStep == .preview {
+    private func setReplySentiment(_ option: String) {
+        replySettings.sentiment = option
+        refreshReplyButtonsForCurrentStep()
+    }
+
+    private func setReplyTone(_ option: String) {
+        replySettings.tone = option
+        refreshReplyButtonsForCurrentStep()
+    }
+
+    private func setReplyLength(_ option: String) {
+        replySettings.length = option
+        refreshReplyButtonsForCurrentStep()
+    }
+
+    private func refreshReplyButtonsForCurrentStep() {
+        switch replyCurrentStep {
+        case .preview:
             showReplyPreview()
-        } else if replyCurrentStep == .generated {
+        case .generated:
             updateReplyGeneratedButtons()
+        case .empty:
+            replyContainer.configureButtons(replyInitialButtons())
         }
     }
 
@@ -899,21 +937,27 @@ class KeyboardViewController: UIInputViewController {
         // Helper to update buttons in Step 3 without regenerating
         replyContainer.configureButtons([
             .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
-                self?.switchToMode(.home, height: .small)
+                self?.cancelReplyFlow()
             }),
-            .init(style: .text(title: replySettings.sentiment, symbolName: nil, isPrimary: false), action: { [weak self] in
-                self?.showSentimentMenu()
-            }),
-            .init(style: .text(title: replySettings.tone, symbolName: nil, isPrimary: false), action: { [weak self] in
-                self?.showToneMenu()
-            }),
-            .init(style: .text(title: replySettings.length, symbolName: nil, isPrimary: false), action: { [weak self] in
-                self?.showLengthMenu()
-            }),
+            .init(
+                style: .text(title: replySettings.sentiment, symbolName: "chevron.down", isPrimary: false),
+                menu: makeSentimentMenu(),
+                showsMenuAsPrimaryAction: true
+            ),
+            .init(
+                style: .text(title: replySettings.tone, symbolName: "chevron.down", isPrimary: false),
+                menu: makeToneMenu(),
+                showsMenuAsPrimaryAction: true
+            ),
+            .init(
+                style: .text(title: replySettings.length, symbolName: "chevron.down", isPrimary: false),
+                menu: makeLengthMenu(),
+                showsMenuAsPrimaryAction: true
+            ),
             .init(style: .icon(symbolName: "arrow.clockwise", accessibilityLabel: "Reload"), action: { [weak self] in
                 self?.generateReply()
             }),
-            .init(style: .text(title: "Insert", symbolName: nil, isPrimary: true), action: { [weak self] in
+            .init(style: .text(title: "Insert", symbolName: "arrow.up", isPrimary: true), action: { [weak self] in
                 self?.insertReply()
             })
         ])
@@ -923,6 +967,7 @@ class KeyboardViewController: UIInputViewController {
         // Show loading state
         replyMessageView.message = "Loading..."
         replyCurrentStep = .generated
+        updateReplyGeneratedButtons()
 
         // Build prompt based on settings
         let lengthInstruction = switch replySettings.length {
@@ -1019,32 +1064,15 @@ class KeyboardViewController: UIInputViewController {
 
     private func showReplyGenerated() {
         // Update buttons for Step 3: show Reload and Insert
-        replyContainer.configureButtons([
-            .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
-                self?.switchToMode(.home, height: .small)
-            }),
-            .init(style: .text(title: replySettings.sentiment, symbolName: nil, isPrimary: false), action: { [weak self] in
-                self?.showSentimentMenu()
-            }),
-            .init(style: .text(title: replySettings.tone, symbolName: nil, isPrimary: false), action: { [weak self] in
-                self?.showToneMenu()
-            }),
-            .init(style: .text(title: replySettings.length, symbolName: nil, isPrimary: false), action: { [weak self] in
-                self?.showLengthMenu()
-            }),
-            .init(style: .icon(symbolName: "arrow.clockwise", accessibilityLabel: "Reload"), action: { [weak self] in
-                self?.generateReply()
-            }),
-            .init(style: .text(title: "Insert", symbolName: nil, isPrimary: true), action: { [weak self] in
-                self?.insertReply()
-            })
-        ])
+        replyCurrentStep = .generated
+        updateReplyGeneratedButtons()
     }
 
     private func insertReply() {
         let text = replyMessageView.message
         guard !text.isEmpty, text != "Loading...", !text.hasPrefix("Error:") else { return }
         textDocumentProxy.insertText(text)
+        resetReplyFlow()
         switchToMode(.home, height: .small)
     }
 }
