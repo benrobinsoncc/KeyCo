@@ -30,6 +30,10 @@ final class ResponseContentView: UIView {
         super.init(frame: frame)
         setupViews()
         setupLayout()
+
+        // Allow compression so we don't push action bar down
+        setContentHuggingPriority(.defaultLow, for: .vertical)
+        setContentCompressionResistancePriority(.defaultLow - 1, for: .vertical)
     }
 
     required init?(coder: NSCoder) {
@@ -76,11 +80,11 @@ final class ResponseContentView: UIView {
             responseContainer.trailingAnchor.constraint(equalTo: trailingAnchor),
             responseContainer.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            // SwiftUI hosting view inside container with padding
+            // SwiftUI hosting view fills the container
             hostingView.topAnchor.constraint(equalTo: responseContainer.topAnchor),
             hostingView.leadingAnchor.constraint(equalTo: responseContainer.leadingAnchor, constant: 4),
             hostingView.trailingAnchor.constraint(equalTo: responseContainer.trailingAnchor, constant: -4),
-            hostingView.bottomAnchor.constraint(lessThanOrEqualTo: responseContainer.bottomAnchor)
+            hostingView.bottomAnchor.constraint(equalTo: responseContainer.bottomAnchor)
         ])
     }
 
@@ -111,10 +115,12 @@ struct AnimatedResponseText: View {
     let id: UUID
 
     var body: some View {
-        Text(text)
-            .font(.system(size: 16))
-            .foregroundColor(Color(uiColor: .label))
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+        ScrollView {
+            Text(text)
+                .font(.system(size: 16))
+                .foregroundColor(Color(uiColor: .label))
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding(.top, 0)
+        }
     }
 }
