@@ -3,6 +3,7 @@ import UIKit
 /// Empty state view for Reply mode showing clipboard icon and instructions
 final class ReplyEmptyStateView: UIView {
 
+    private let headerLabel = UILabel()
     private let iconImageView = UIImageView()
     private let titleLabel = UILabel()
     private let subtitleLabel = UILabel()
@@ -21,6 +22,13 @@ final class ReplyEmptyStateView: UIView {
     private func setupViews() {
         backgroundColor = .clear
 
+        // Header
+        headerLabel.text = "REPLY"
+        headerLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        headerLabel.textColor = .systemGray
+        headerLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(headerLabel)
+
         // Icon
         iconImageView.image = UIImage(systemName: "doc.on.clipboard")
         iconImageView.tintColor = .systemGray
@@ -30,14 +38,14 @@ final class ReplyEmptyStateView: UIView {
 
         // Title
         titleLabel.text = "Get a smart reply"
-        titleLabel.font = .systemFont(ofSize: 17, weight: .semibold)
+        titleLabel.font = .systemFont(ofSize: 15, weight: .semibold)
         titleLabel.textColor = .label
         titleLabel.textAlignment = .center
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
         // Subtitle
         subtitleLabel.text = "Copy a message, then tap Paste"
-        subtitleLabel.font = .systemFont(ofSize: 15, weight: .regular)
+        subtitleLabel.font = .systemFont(ofSize: 13, weight: .regular)
         subtitleLabel.textColor = .secondaryLabel
         subtitleLabel.textAlignment = .center
         subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -45,24 +53,30 @@ final class ReplyEmptyStateView: UIView {
         // Stack view
         stackView.axis = .vertical
         stackView.alignment = .center
-        stackView.spacing = 12
+        stackView.spacing = 8
         stackView.translatesAutoresizingMaskIntoConstraints = false
         stackView.addArrangedSubview(iconImageView)
         stackView.addArrangedSubview(titleLabel)
         stackView.addArrangedSubview(subtitleLabel)
+        stackView.setCustomSpacing(4, after: titleLabel)
 
         addSubview(stackView)
     }
 
     private func setupLayout() {
         NSLayoutConstraint.activate([
-            iconImageView.widthAnchor.constraint(equalToConstant: 48),
-            iconImageView.heightAnchor.constraint(equalToConstant: 48),
+            headerLabel.topAnchor.constraint(equalTo: topAnchor),
+            headerLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
 
+            iconImageView.widthAnchor.constraint(equalToConstant: 36),
+            iconImageView.heightAnchor.constraint(equalToConstant: 36),
+
+            stackView.topAnchor.constraint(equalTo: headerLabel.bottomAnchor, constant: 12),
             stackView.centerXAnchor.constraint(equalTo: centerXAnchor),
-            stackView.centerYAnchor.constraint(equalTo: centerYAnchor),
-            stackView.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 20),
-            stackView.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -20)
+            stackView.centerYAnchor.constraint(equalTo: centerYAnchor, constant: 12),
+            stackView.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 16),
+            stackView.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -16),
+            stackView.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -12)
         ])
     }
 }

@@ -199,7 +199,7 @@ final class ActionContainerView: UIView {
         buttonTopSpacing: CGFloat,
         buttonSideInset: CGFloat = 12,
         buttonBottomInset: CGFloat = 12,
-        buttonCornerRadius: CGFloat = 16
+        buttonCornerRadius: CGFloat = 18
     ) {
         contentInsets = insets
         self.dividerSpacing = dividerSpacing
