@@ -71,12 +71,10 @@ final class ReplyEmptyStateView: UIView {
             iconImageView.widthAnchor.constraint(equalToConstant: 32),
             iconImageView.heightAnchor.constraint(equalToConstant: 32),
 
-            stackView.topAnchor.constraint(equalTo: headerLabel.bottomAnchor, constant: 16),
-            stackView.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 16),
-            stackView.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -16),
-            stackView.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -16),
             stackView.centerXAnchor.constraint(equalTo: centerXAnchor),
-            stackView.centerYAnchor.constraint(equalTo: centerYAnchor, constant: 8)
+            stackView.centerYAnchor.constraint(equalTo: centerYAnchor, constant: 8),
+            stackView.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 16),
+            stackView.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -16)
         ])
     }
 }

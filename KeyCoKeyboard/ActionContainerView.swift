@@ -10,6 +10,7 @@ final class ActionContainerView: UIView {
         enum DisplayStyle {
             case icon(symbolName: String, accessibilityLabel: String)
             case text(title: String, symbolName: String? = nil, isPrimary: Bool)
+            case spacer
         }
 
         let style: DisplayStyle
@@ -42,6 +43,7 @@ final class ActionContainerView: UIView {
     private let contentContainer = UIView()
     private let dividerView = UIView()
     private let buttonStack = UIStackView()
+    private let bottomBar = UIView()
     private let toggleButton = UIButton(type: .system)
 
     private var buttonActions: [UIButton: () -> Void] = [:]
@@ -62,6 +64,7 @@ final class ActionContainerView: UIView {
     private var buttonLeadingConstraint: NSLayoutConstraint!
     private var buttonTrailingConstraint: NSLayoutConstraint!
     private var buttonBottomConstraint: NSLayoutConstraint!
+    private var bottomBarHeightConstraint: NSLayoutConstraint!
 
     // MARK: - Initialization
 
@@ -95,14 +98,17 @@ final class ActionContainerView: UIView {
         dividerView.translatesAutoresizingMaskIntoConstraints = false
         backgroundView.addSubview(dividerView)
 
+        bottomBar.translatesAutoresizingMaskIntoConstraints = false
+        backgroundView.addSubview(bottomBar)
+
         buttonStack.axis = .horizontal
         buttonStack.alignment = .center
         buttonStack.distribution = .fill
-        buttonStack.spacing = 8
+        buttonStack.spacing = 0
         buttonStack.translatesAutoresizingMaskIntoConstraints = false
         buttonStack.setContentHuggingPriority(.required, for: .vertical)
         buttonStack.setContentCompressionResistancePriority(.required, for: .vertical)
-        backgroundView.addSubview(buttonStack)
+        bottomBar.addSubview(buttonStack)
     }
 
     private func setupLayout() {
@@ -123,11 +129,12 @@ final class ActionContainerView: UIView {
         contentTrailingConstraint = contentContainer.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor, constant: -contentInsets.right)
         dividerTopConstraint = dividerView.topAnchor.constraint(equalTo: contentContainer.bottomAnchor, constant: dividerSpacing)
         contentBottomConstraint = contentContainer.bottomAnchor.constraint(equalTo: dividerView.topAnchor, constant: -dividerSpacing)
-        buttonTopConstraint = buttonStack.topAnchor.constraint(equalTo: dividerView.bottomAnchor, constant: buttonTopSpacing)
+        buttonTopConstraint = buttonStack.topAnchor.constraint(equalTo: bottomBar.topAnchor, constant: 8)
 
-        buttonLeadingConstraint = buttonStack.leadingAnchor.constraint(equalTo: backgroundView.leadingAnchor, constant: buttonSideInset)
-        buttonTrailingConstraint = buttonStack.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor, constant: -buttonSideInset)
-        buttonBottomConstraint = buttonStack.bottomAnchor.constraint(equalTo: backgroundView.bottomAnchor, constant: -buttonBottomInset)
+        buttonLeadingConstraint = buttonStack.leadingAnchor.constraint(equalTo: bottomBar.leadingAnchor, constant: buttonSideInset)
+        buttonTrailingConstraint = buttonStack.trailingAnchor.constraint(equalTo: bottomBar.trailingAnchor, constant: -buttonSideInset)
+        buttonBottomConstraint = buttonStack.bottomAnchor.constraint(equalTo: bottomBar.bottomAnchor, constant: -8)
+        bottomBarHeightConstraint = bottomBar.heightAnchor.constraint(equalToConstant: 8 + 8 + 32)
 
         NSLayoutConstraint.activate([
             contentTopConstraint,
@@ -138,10 +145,15 @@ final class ActionContainerView: UIView {
             dividerView.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor),
             dividerView.heightAnchor.constraint(equalToConstant: 1),
             contentBottomConstraint,
+            bottomBar.topAnchor.constraint(equalTo: dividerView.bottomAnchor),
+            bottomBar.leadingAnchor.constraint(equalTo: backgroundView.leadingAnchor),
+            bottomBar.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor),
+            bottomBar.bottomAnchor.constraint(equalTo: backgroundView.bottomAnchor),
             buttonTopConstraint,
             buttonLeadingConstraint,
             buttonTrailingConstraint,
-            buttonBottomConstraint
+            buttonBottomConstraint,
+            bottomBarHeightConstraint
         ])
     }
 
@@ -212,10 +224,11 @@ final class ActionContainerView: UIView {
         contentTrailingConstraint.constant = -insets.right
         contentBottomConstraint.constant = -dividerSpacing
         dividerTopConstraint.constant = dividerSpacing
-        buttonTopConstraint.constant = buttonTopSpacing
+        buttonTopConstraint.constant = 8
         buttonLeadingConstraint.constant = buttonSideInset
         buttonTrailingConstraint.constant = -buttonSideInset
-        buttonBottomConstraint.constant = -buttonBottomInset
+        buttonBottomConstraint.constant = -8
+        bottomBarHeightConstraint.constant = 8 + 8 + 32
         layoutIfNeeded()
     }
 
@@ -226,29 +239,58 @@ final class ActionContainerView: UIView {
         }
         buttonActions.removeAll()
 
-        var needsSpacer = true
-        var arrangedButtons: [UIButton] = []
+        guard !configurations.isEmpty else { return }
 
-        for configuration in configurations {
+        let firstPrimaryIndex = configurations.firstIndex { config in
+            if case .text(_, _, let isPrimary) = config.style {
+                return isPrimary
+            }
+            return false
+        }
+
+        var previousWasFlexibleSpacer = false
+
+        for (index, configuration) in configurations.enumerated() {
+            // Check if this is an explicit spacer or auto-spacer before primary button
+            if case .spacer = configuration.style {
+                // Explicit flexible spacer
+                let flexibleSpacer = UIView()
+                flexibleSpacer.translatesAutoresizingMaskIntoConstraints = false
+                flexibleSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+                flexibleSpacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+                buttonStack.addArrangedSubview(flexibleSpacer)
+                previousWasFlexibleSpacer = true
+                continue
+            } else if let primaryIndex = firstPrimaryIndex, index == primaryIndex {
+                // Auto-spacer before first primary button
+                let flexibleSpacer = UIView()
+                flexibleSpacer.translatesAutoresizingMaskIntoConstraints = false
+                flexibleSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+                flexibleSpacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+                buttonStack.addArrangedSubview(flexibleSpacer)
+                previousWasFlexibleSpacer = true
+            } else if !buttonStack.arrangedSubviews.isEmpty && !previousWasFlexibleSpacer {
+                // Fixed spacer between regular buttons
+                let spacer = UIView()
+                spacer.translatesAutoresizingMaskIntoConstraints = false
+                spacer.widthAnchor.constraint(equalToConstant: 8).isActive = true
+                buttonStack.addArrangedSubview(spacer)
+            }
+
             let button: UIButton
 
             switch configuration.style {
             case let .icon(symbolName, accessibilityLabel):
                 button = createIconButton(symbolName: symbolName, accessibilityLabel: accessibilityLabel)
             case let .text(title, symbolName, isPrimary):
-                if needsSpacer {
-                    let spacer = UIView()
-                    spacer.translatesAutoresizingMaskIntoConstraints = false
-                    spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-                    spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-                    buttonStack.addArrangedSubview(spacer)
-                    needsSpacer = false
-                }
                 button = createTextButton(
                     title: title,
                     symbolName: symbolName,
                     isPrimary: isPrimary
                 )
+            case .spacer:
+                // Already handled above
+                continue
             }
 
             if let menu = configuration.menu {
@@ -262,17 +304,7 @@ final class ActionContainerView: UIView {
             }
 
             buttonStack.addArrangedSubview(button)
-            arrangedButtons.append(button)
-        }
-
-        // Ensure horizontal spacing between buttons
-        for (index, button) in arrangedButtons.enumerated() where index > 0 {
-            let spacer = UIView()
-            spacer.translatesAutoresizingMaskIntoConstraints = false
-            spacer.widthAnchor.constraint(equalToConstant: 12).isActive = true
-            if let insertionIndex = buttonStack.arrangedSubviews.firstIndex(of: button) {
-                buttonStack.insertArrangedSubview(spacer, at: insertionIndex)
-            }
+            previousWasFlexibleSpacer = false
         }
     }
 
@@ -325,10 +357,12 @@ final class ActionContainerView: UIView {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.heightAnchor.constraint(equalToConstant: 32).isActive = true
-        button.layer.cornerRadius = buttonCornerRadius
+        // Use fixed corner radius of 16 for fully rounded appearance
+        button.layer.cornerRadius = 16
         button.layer.cornerCurve = .continuous
         button.clipsToBounds = true
         button.titleLabel?.font = .systemFont(ofSize: isPrimary ? 15 : 13, weight: isPrimary ? .semibold : .medium)
+        button.titleLabel?.lineBreakMode = .byTruncatingTail
         button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
         button.setTitle(title, for: .normal)
 
@@ -347,8 +381,9 @@ final class ActionContainerView: UIView {
             if symbolName == "chevron.down" {
                 button.semanticContentAttribute = .forceRightToLeft
                 button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
-                button.imageEdgeInsets = UIEdgeInsets(top: 0, left: -6, bottom: 0, right: 10)
-                button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: -10)
+                // Add more space between label and chevron
+                button.imageEdgeInsets = UIEdgeInsets(top: 0, left: 4, bottom: 0, right: 0)
+                button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 4)
             } else {
                 button.imageEdgeInsets = UIEdgeInsets(top: 0, left: -4, bottom: 0, right: 4)
                 button.semanticContentAttribute = .forceLeftToRight
@@ -362,14 +397,19 @@ final class ActionContainerView: UIView {
                 trait.userInterfaceStyle == .dark ? UIColor.black : UIColor.white
             }, for: .normal)
         } else {
+            // Use same grey as icon buttons for consistency
             button.backgroundColor = UIColor { trait in
-                trait.userInterfaceStyle == .dark ? UIColor.secondarySystemBackground : UIColor.systemGray5
+                trait.userInterfaceStyle == .dark ? UIColor.tertiarySystemBackground : UIColor.secondarySystemBackground
             }
             button.setTitleColor(.label, for: .normal)
         }
 
         button.setContentHuggingPriority(.required, for: .horizontal)
-        button.setContentCompressionResistancePriority(.required, for: .horizontal)
+        button.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+        
+        // Add minimum width constraint to prevent excessive compression
+        button.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
+        
         return button
     }
 }

@@ -16,7 +16,7 @@ class KeyboardViewController: UIInputViewController {
 
     private enum KeyboardHeight: CGFloat {
         case small = 250
-        case large = 800
+        case large = 700
     }
 
     private var currentMode: KeyboardMode = .home
@@ -54,23 +54,29 @@ class KeyboardViewController: UIInputViewController {
     }
 
     private enum ReplySentimentOption: CaseIterable {
-        case good, ok, bad
+        case positive, neutral, negative
 
         var menuTitle: String {
             switch self {
-            case .good: return "Good"
-            case .ok: return "Ok"
-            case .bad: return "Bad"
+            case .positive: return "Positive"
+            case .neutral: return "Neutral"
+            case .negative: return "Negative"
             }
         }
 
-        var summaryTitle: String { menuTitle }
+        var summaryTitle: String { 
+            switch self {
+            case .positive: return "Positive"
+            case .neutral: return "Neutral" 
+            case .negative: return "Negative"
+            }
+        }
 
         var instructionText: String {
             switch self {
-            case .good: return "Be positive, upbeat, and enthusiastic."
-            case .ok: return "Maintain a neutral, balanced tone."
-            case .bad: return "Be critical or express concerns appropriately."
+            case .positive: return "Be positive, upbeat, and enthusiastic."
+            case .neutral: return "Maintain a neutral, balanced tone."
+            case .negative: return "Be critical or express concerns appropriately."
             }
         }
     }
@@ -115,11 +121,9 @@ class KeyboardViewController: UIInputViewController {
 
         var summaryTitle: String {
             switch self {
-            case .professional: return "Pro"
-            case .casual: return menuTitle
-            case .friendly:
-                let base = menuTitle
-                return base.count > 6 ? String(base.prefix(6)) : base
+            case .professional: return "Professional"
+            case .casual: return "Casual"
+            case .friendly: return "Friendly"
             }
         }
 
@@ -133,7 +137,7 @@ class KeyboardViewController: UIInputViewController {
     }
 
     private struct ReplySettings {
-        var sentiment: ReplySentimentOption = .ok
+        var sentiment: ReplySentimentOption = .neutral
         var tone: ReplyToneOption = .professional
         var length: ReplyLengthOption = .medium
     }
@@ -157,12 +161,62 @@ class KeyboardViewController: UIInputViewController {
 
         // Setup UI
         setupKeyboard()
+        
+        // Add notification observer for app becoming active
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    @objc private func appDidBecomeActive() {
+        // When the app becomes active (user returns from Safari), force a complete refresh
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.forceKeyboardRefresh()
+        }
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         persistState()
     }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // Force refresh when view appears
+        DispatchQueue.main.async { [weak self] in
+            self?.forceKeyboardRefresh()
+        }
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // Additional refresh after view appears
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.forceKeyboardRefresh()
+        }
+    }
+    
+    // MARK: - Keyboard Extension Lifecycle
+    
+    override func textWillChange(_ textInput: UITextInput?) {
+        super.textWillChange(textInput)
+        // Called when keyboard is about to become active
+        forceKeyboardRefresh()
+    }
+    
+    override func textDidChange(_ textInput: UITextInput?) {
+        super.textDidChange(textInput)
+        // Called when keyboard becomes active
+        forceKeyboardRefresh()
+    }
+    
 
     // MARK: - Setup
 
@@ -339,7 +393,7 @@ class KeyboardViewController: UIInputViewController {
             contentView: replyEmptyStateView,
             buttonConfigs: replyInitialButtons(),
             showsToggle: true,
-            contentInsets: UIEdgeInsets(top: 12, left: 12, bottom: 0, right: 12)
+            contentInsets: UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         )
         replyView.addSubview(replyContainer)
         pinContainer(replyContainer, to: replyView)
@@ -402,7 +456,7 @@ class KeyboardViewController: UIInputViewController {
                 })
             ],
             showsToggle: true,
-            contentInsets: UIEdgeInsets(top: 12, left: 12, bottom: 0, right: 12)
+            contentInsets: UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         )
         rewriteView.addSubview(rewriteContainer)
         pinContainer(rewriteContainer, to: rewriteView)
@@ -438,10 +492,11 @@ class KeyboardViewController: UIInputViewController {
                 .init(style: .icon(symbolName: "arrow.clockwise", accessibilityLabel: "Reload"), action: { [weak self] in
                     self?.reloadGoogle()
                 }),
+                .init(style: .spacer),
                 .init(style: .text(title: "Open", symbolName: "safari", isPrimary: false), action: { [weak self] in
                     self?.openGoogleResult()
                 }),
-                .init(style: .text(title: "Insert", symbolName: "arrow.up", isPrimary: true), action: { [weak self] in
+                .init(style: .text(title: "Insert", symbolName: "arrow.up", isPrimary: false), action: { [weak self] in
                     self?.insertGoogleResult()
                 })
             ],
@@ -488,7 +543,7 @@ class KeyboardViewController: UIInputViewController {
                 })
             ],
             showsToggle: true,
-            contentInsets: UIEdgeInsets(top: 12, left: 12, bottom: 0, right: 12)
+            contentInsets: UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         )
         chatgptView.addSubview(chatgptContainer)
         pinContainer(chatgptContainer, to: chatgptView)
@@ -579,8 +634,12 @@ class KeyboardViewController: UIInputViewController {
     }
 
     private func updateHeight(animated: Bool) {
-        heightConstraint.constant = containerHeight(for: currentHeight)
-
+        let newHeight = containerHeight(for: currentHeight)
+        heightConstraint.constant = newHeight
+        
+        // Force the view controller to recognize the new size
+        view.setNeedsLayout()
+        
         if animated {
             UIView.animate(
                 withDuration: 0.3,
@@ -647,6 +706,44 @@ class KeyboardViewController: UIInputViewController {
 
         updateContainerExpansionState()
     }
+    
+    private func forceKeyboardRefresh() {
+        NSLog("[KeyCo] Force refreshing keyboard extension")
+        
+        // Force complete layout refresh
+        let targetHeight = containerHeight(for: currentHeight)
+        
+        // Update height constraint
+        heightConstraint?.constant = targetHeight
+        
+        // Force all views to update their layouts
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+        
+        // Update container states
+        updateContainerExpansionState()
+        
+        // Force the input view to recognize the new size
+        if let inputView = view.superview {
+            inputView.setNeedsLayout()
+            inputView.layoutIfNeeded()
+        }
+        
+        // Additional refresh after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            guard let self = self else { return }
+            
+            // Force another layout pass
+            self.view.setNeedsLayout()
+            self.view.layoutIfNeeded()
+            
+            // Update mode visibility to ensure everything is correct
+            self.updateModeVisibility()
+            
+            NSLog("[KeyCo] Keyboard refresh completed")
+        }
+    }
+    
 
     // MARK: - Helpers
 
@@ -665,14 +762,14 @@ class KeyboardViewController: UIInputViewController {
         } else {
             container.setContentView(UIView())
         }
-        let buttonTopSpacing: CGFloat = 12
+        let buttonTopSpacing: CGFloat = 8
         let dividerSpacing: CGFloat = 0
         container.setContentLayout(
             insets: contentInsets,
             dividerSpacing: dividerSpacing,
             buttonTopSpacing: buttonTopSpacing,
             buttonSideInset: 12,
-            buttonBottomInset: 12,
+            buttonBottomInset: 8,
             buttonCornerRadius: 16
         )
         container.configureButtons(buttonConfigs)
@@ -733,22 +830,48 @@ class KeyboardViewController: UIInputViewController {
 
         NSLog("[KeyCo] Attempting to open URL: %@", url.absoluteString)
 
-        // Check if extensionContext exists
-        guard let context = extensionContext else {
-            NSLog("[KeyCo] Extension context is nil")
-            return
+        // Try multiple methods to open the URL
+        
+        // Method 1: Try using responder chain to get to UIApplication
+        var responder: UIResponder? = self
+        while responder != nil {
+            if let application = responder as? UIApplication {
+                application.open(url, options: [:]) { success in
+                    NSLog("[KeyCo] UIApplication.open result: %@", success ? "SUCCESS" : "FAILED")
+                }
+                return
+            }
+            responder = responder?.next
         }
-
-        // Try to open the URL
-        context.open(url) { success in
-            NSLog("[KeyCo] Open URL result: %@", success ? "SUCCESS" : "FAILED")
-            if !success {
-                // If opening fails, copy URL to clipboard as fallback
-                DispatchQueue.main.async {
-                    UIPasteboard.general.string = url.absoluteString
-                    NSLog("[KeyCo] Copied URL to clipboard: %@", url.absoluteString)
+        
+        // Method 2: Try using selector-based approach (works in some iOS versions)
+        let selector = NSSelectorFromString("openURL:")
+        var openResponder: UIResponder? = self
+        while openResponder != nil {
+            if openResponder?.responds(to: selector) == true {
+                openResponder?.perform(selector, with: url)
+                NSLog("[KeyCo] Opened URL via responder chain")
+                return
+            }
+            openResponder = openResponder?.next
+        }
+        
+        // Method 3: Try extensionContext.open as fallback
+        if let context = extensionContext {
+            context.open(url) { success in
+                NSLog("[KeyCo] extensionContext.open result: %@", success ? "SUCCESS" : "FAILED")
+                if !success {
+                    // If opening fails, copy URL to clipboard as final fallback
+                    DispatchQueue.main.async {
+                        UIPasteboard.general.string = url.absoluteString
+                        NSLog("[KeyCo] Copied URL to clipboard as fallback: %@", url.absoluteString)
+                    }
                 }
             }
+        } else {
+            // No extension context, copy to clipboard
+            UIPasteboard.general.string = url.absoluteString
+            NSLog("[KeyCo] No extension context, copied URL to clipboard: %@", url.absoluteString)
         }
     }
 
@@ -935,21 +1058,18 @@ class KeyboardViewController: UIInputViewController {
                 self?.cancelReplyFlow()
             }),
             .init(
-                style: .text(title: replyFilterSummaryTitle(), symbolName: "chevron.down", isPrimary: false),
-                menu: makeFilterMenu(),
+                style: .text(title: self.replySettings.sentiment.summaryTitle, symbolName: "chevron.down", isPrimary: false),
+                menu: makeSentimentMenu(),
+                showsMenuAsPrimaryAction: true
+            ),
+            .init(
+                style: .text(title: self.replySettings.tone.summaryTitle, symbolName: "chevron.down", isPrimary: false),
+                menu: makeToneMenu(),
                 showsMenuAsPrimaryAction: true
             ),
             .init(style: .text(title: "Generate", symbolName: "sparkles", isPrimary: true), action: { [weak self] in
                 self?.generateReply()
             })
-        ])
-    }
-
-    private func makeFilterMenu() -> UIMenu {
-        UIMenu(title: "Reply style", children: [
-            makeSentimentMenu(),
-            makeLengthMenu(),
-            makeToneMenu()
         ])
     }
 
@@ -971,23 +1091,6 @@ class KeyboardViewController: UIInputViewController {
         return UIMenu(title: "Tone", options: .displayInline, children: actions)
     }
 
-    private func makeLengthMenu() -> UIMenu {
-        let actions = ReplyLengthOption.allCases.map { option in
-            UIAction(title: option.menuTitle, state: option == replySettings.length ? .on : .off) { [weak self] _ in
-                self?.setReplyLength(option)
-            }
-        }
-        return UIMenu(title: "Length", options: .displayInline, children: actions)
-    }
-
-    private func replyFilterSummaryTitle() -> String {
-        [
-            replySettings.sentiment.summaryTitle,
-            replySettings.length.summaryTitle,
-            replySettings.tone.summaryTitle
-        ].joined(separator: " · ")
-    }
-
     private func setReplySentiment(_ option: ReplySentimentOption) {
         replySettings.sentiment = option
         refreshReplyButtonsForCurrentStep()
@@ -998,10 +1101,6 @@ class KeyboardViewController: UIInputViewController {
         refreshReplyButtonsForCurrentStep()
     }
 
-    private func setReplyLength(_ option: ReplyLengthOption) {
-        replySettings.length = option
-        refreshReplyButtonsForCurrentStep()
-    }
 
     private func refreshReplyButtonsForCurrentStep() {
         switch replyCurrentStep {
@@ -1021,8 +1120,13 @@ class KeyboardViewController: UIInputViewController {
                 self?.cancelReplyFlow()
             }),
             .init(
-                style: .text(title: replyFilterSummaryTitle(), symbolName: "chevron.down", isPrimary: false),
-                menu: makeFilterMenu(),
+                style: .text(title: self.replySettings.sentiment.summaryTitle, symbolName: "chevron.down", isPrimary: false),
+                menu: makeSentimentMenu(),
+                showsMenuAsPrimaryAction: true
+            ),
+            .init(
+                style: .text(title: self.replySettings.tone.summaryTitle, symbolName: "chevron.down", isPrimary: false),
+                menu: makeToneMenu(),
                 showsMenuAsPrimaryAction: true
             ),
             .init(style: .icon(symbolName: "arrow.clockwise", accessibilityLabel: "Reload"), action: { [weak self] in

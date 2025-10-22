@@ -1,4 +1,6 @@
 import UIKit
+import SwiftUI
+import Shimmer
 
 /// View for displaying pasted message or generated reply in Reply mode
 final class ReplyMessageView: UIView {
@@ -6,10 +8,13 @@ final class ReplyMessageView: UIView {
     private let titleLabel = UILabel()
     private let scrollView = UIScrollView()
     private let messageLabel = UILabel()
+    private var shimmerHostingController: UIHostingController<ShimmerLoadingText>?
+    private let shimmerContainer = UIView()
 
     var message: String = "" {
         didSet {
             messageLabel.text = message
+            updateShimmerState()
         }
     }
 
@@ -45,9 +50,25 @@ final class ReplyMessageView: UIView {
         messageLabel.numberOfLines = 0
         messageLabel.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(messageLabel)
+
+        // Shimmer container (for Loading... state)
+        shimmerContainer.translatesAutoresizingMaskIntoConstraints = false
+        shimmerContainer.backgroundColor = .clear
+        shimmerContainer.isHidden = true
+        scrollView.addSubview(shimmerContainer)
+
+        // Setup SwiftUI shimmer view
+        let shimmerView = ShimmerLoadingText()
+        let hosting = UIHostingController(rootView: shimmerView)
+        hosting.view.backgroundColor = .clear
+        hosting.view.translatesAutoresizingMaskIntoConstraints = false
+        shimmerHostingController = hosting
+        shimmerContainer.addSubview(hosting.view)
     }
 
     private func setupLayout() {
+        guard let shimmerHostingView = shimmerHostingController?.view else { return }
+
         NSLayoutConstraint.activate([
             // Title at top
             titleLabel.topAnchor.constraint(equalTo: topAnchor),
@@ -65,7 +86,42 @@ final class ReplyMessageView: UIView {
             messageLabel.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
             messageLabel.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
             messageLabel.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            messageLabel.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
+            messageLabel.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+
+            // Shimmer container (same position as message label)
+            shimmerContainer.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            shimmerContainer.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+            shimmerContainer.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+            shimmerContainer.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+
+            // Shimmer hosting view fills container
+            shimmerHostingView.topAnchor.constraint(equalTo: shimmerContainer.topAnchor),
+            shimmerHostingView.leadingAnchor.constraint(equalTo: shimmerContainer.leadingAnchor),
+            shimmerHostingView.trailingAnchor.constraint(equalTo: shimmerContainer.trailingAnchor),
+            shimmerHostingView.bottomAnchor.constraint(equalTo: shimmerContainer.bottomAnchor)
         ])
+    }
+
+    private func updateShimmerState() {
+        let isLoading = message == "Loading..."
+        shimmerContainer.isHidden = !isLoading
+        messageLabel.isHidden = isLoading
+    }
+}
+
+// MARK: - SwiftUI Shimmer Loading View
+
+struct ShimmerLoadingText: View {
+    var body: some View {
+        Text("Loading...")
+            .font(.system(size: 16))
+            .foregroundColor(.black)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .shimmering(
+                animation: .easeInOut(duration: 2.0).repeatForever(autoreverses: false),
+                gradient: Gradient(colors: [.clear, .white.opacity(0.8), .clear]),
+                bandSize: 0.4,
+                mode: .overlay()
+            )
     }
 }

@@ -1,5 +1,6 @@
 import UIKit
 import SwiftUI
+import Shimmer
 
 /// Content view for displaying mode title and response text
 final class ResponseContentView: UIView {
@@ -117,9 +118,16 @@ struct AnimatedResponseText: View {
         ScrollView {
             Text(text)
                 .font(.system(size: 16))
-                .foregroundColor(Color(uiColor: .label))
+                .foregroundColor(.black)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
                 .padding(.top, 0)
+                .shimmering(
+                    active: text == "Loading...",
+                    animation: .easeInOut(duration: 2.0).repeatForever(autoreverses: false),
+                    gradient: Gradient(colors: [.clear, .white.opacity(0.8), .clear]),
+                    bandSize: 0.4,
+                    mode: .overlay()
+                )
         }
     }
 }
