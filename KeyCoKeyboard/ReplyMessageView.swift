@@ -1,6 +1,5 @@
 import UIKit
 import SwiftUI
-import Shimmer
 
 /// View for displaying pasted message or generated reply in Reply mode
 final class ReplyMessageView: UIView {
@@ -117,11 +116,6 @@ struct ShimmerLoadingText: View {
             .font(.system(size: 16))
             .foregroundColor(.black)
             .frame(maxWidth: .infinity, alignment: .topLeading)
-            .shimmering(
-                animation: .easeInOut(duration: 2.0).repeatForever(autoreverses: false),
-                gradient: Gradient(colors: [.clear, .white.opacity(0.8), .clear]),
-                bandSize: 0.4,
-                mode: .overlay()
-            )
+            .opacity(0.6)
     }
 }
