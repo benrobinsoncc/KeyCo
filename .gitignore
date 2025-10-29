@@ -71,3 +71,19 @@ iOSInjectionProject/
 
 # macOS
 .DS_Store
+
+# Sensitive configuration files (API keys, secrets, etc.)
+.env
+.env.local
+.env.*.local
+*.env
+*secrets*
+*api*key*
+config.secrets.plist
+secrets.plist
+
+# Backup files (may contain sensitive data)
+*.bak
+*.backup
+*~
+

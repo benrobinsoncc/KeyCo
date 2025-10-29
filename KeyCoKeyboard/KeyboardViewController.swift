@@ -15,7 +15,7 @@ class KeyboardViewController: UIInputViewController {
 
     private enum KeyboardHeight: CGFloat {
         case small = 255  // Aligned with default UK English keyboard
-        case large = 700
+        case large = 500
     }
 
     private var currentMode: KeyboardMode = .home
@@ -54,9 +54,10 @@ class KeyboardViewController: UIInputViewController {
     private let containerMargin: CGFloat = 3
     private let cornerRadius: CGFloat = 20
 
-    // ChatGPT API
-    // TODO: Move API key to secure configuration/Keychain
-    private let chatGPTAPIKey = "YOUR_API_KEY_HERE"
+    // ChatGPT API - stored securely in Keychain
+    private var chatGPTAPIKey: String? {
+        return KeychainHelper.retrieveAPIKey()
+    }
     // MARK: - Lifecycle
 
     override func viewDidLoad() {
@@ -900,6 +901,11 @@ class KeyboardViewController: UIInputViewController {
         """
 
         // Make API request
+        guard let apiKey = chatGPTAPIKey else {
+            handleWriteError("API key not configured. Please set it in Keychain.")
+            return
+        }
+        
         guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else {
             handleWriteError("Invalid URL")
             return
@@ -909,7 +915,7 @@ class KeyboardViewController: UIInputViewController {
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("Bearer \(chatGPTAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 30
 
@@ -1161,10 +1167,15 @@ class KeyboardViewController: UIInputViewController {
         chatgptContentView.responseText = "Loading..."
 
         // Make API request
+        guard let apiKey = chatGPTAPIKey else {
+            chatgptContentView.responseText = "Error: API key not configured. Please set it in Keychain."
+            return
+        }
+        
         let url = URL(string: "https://api.openai.com/v1/chat/completions")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("Bearer \(chatGPTAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let requestBody: [String: Any] = [

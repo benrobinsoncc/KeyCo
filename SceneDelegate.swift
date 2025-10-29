@@ -30,7 +30,9 @@ struct AppRootView: View {
             if appState.hasCompletedOnboarding {
                 HomeView()
             } else {
-                OnboardingCoordinator(isPresented: .constant(true))
+                WelcomeView(onContinue: {
+                    AppState.shared.hasCompletedOnboarding = true
+                })
             }
         }
         .onAppear {

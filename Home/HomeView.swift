@@ -6,7 +6,6 @@ struct HomeView: View {
     @StateObject private var appState = AppState.shared
     @State private var showingOnboarding = false
     @State private var isKeyboardActive = false
-    @State private var showingHowToUse = false
     @State private var showingFeedback = false
     @State private var showingSupport = false
     @AppStorage("isShowingOnboardingFromHome") private var isShowingOnboardingFromHome = false
@@ -29,40 +28,6 @@ struct HomeView: View {
                             .padding(.bottom, 8)
 
                         HStack(spacing: 12) {
-                            // How to use card
-                            Button(action: {
-                                showingHowToUse = true
-                            }) {
-                                VStack(alignment: .leading, spacing: 0) {
-                                    HStack {
-                                        Image(systemName: "keyboard.fill")
-                                            .font(.system(size: 16))
-                                            .foregroundStyle(Color(uiColor: .label))
-                                            .frame(width: 32, height: 32)
-                                            .background(Circle().fill(Color(uiColor: .secondarySystemFill)))
-                                        Spacer()
-                                    }
-                                    .padding(.top, 16)
-                                    .padding(.leading, 16)
-                                    
-                                    Spacer()
-                                    
-                                    Text("How to use")
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundStyle(Color(uiColor: .label))
-                                        .padding(.bottom, 16)
-                                        .padding(.leading, 16)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                                .frame(height: 120)
-                                .frame(maxWidth: .infinity)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .fill(Color(uiColor: .secondarySystemGroupedBackground))
-                                )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-
                             // Show onboarding card
                             Button(action: {
                                 // Reset to start of onboarding when manually opening it
@@ -246,17 +211,12 @@ struct HomeView: View {
                 }
             }
             .fullScreenCover(isPresented: $showingOnboarding) {
-                NSLog("🎬 Creating OnboardingCoordinator")
-                return OnboardingCoordinator(isPresented: $showingOnboarding)
+                NSLog("🎬 Creating WelcomeView")
+                return WelcomeView(onContinue: { showingOnboarding = false })
                     .id("onboarding-flow")
             }
             .onChange(of: showingOnboarding) { _, newValue in
                 isShowingOnboardingFromHome = newValue
-            }
-            .sheet(isPresented: $showingHowToUse) {
-                NavigationStack {
-                    KeyboardTestView(onComplete: { showingHowToUse = false }, onSkip: { showingHowToUse = false })
-                }
             }
             .sheet(isPresented: $showingFeedback) {
                 MailComposeView(recipient: "benrobinsoncc@gmail.com", subject: "Feedback for KeyCo", isPresented: $showingFeedback)
@@ -268,7 +228,8 @@ struct HomeView: View {
     }
 
     private func checkKeyboardStatus() {
-        isKeyboardActive = KeyboardDetectionHelper.shared.isKeyboardEnabled()
+        // Keyboard detection not available - always show as enabled
+        isKeyboardActive = true
     }
 
     private func requestReview() {

@@ -7,18 +7,27 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		524ADCD62EAD2A3800DE2382 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCD52EAD2A3800DE2382 /* SceneDelegate.swift */; };
+		524ADCDA2EAD2A3800DE2382 /* PrimaryButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCC42EAD2A3800DE2382 /* PrimaryButton.swift */; };
+		524ADCDD2EAD2A3800DE2382 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCC22EAD2A3800DE2382 /* AppDelegate.swift */; };
+		524ADCE02EAD2A3800DE2382 /* MailComposeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCC32EAD2A3800DE2382 /* MailComposeView.swift */; };
+		524ADCE22EAD2A3800DE2382 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCC62EAD2A3800DE2382 /* HomeView.swift */; };
+		524ADCE32EAD2A3800DE2382 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCD32EAD2A3800DE2382 /* WelcomeView.swift */; };
+		524ADCE42EAD2A3800DE2382 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCCC2EAD2A3800DE2382 /* AppState.swift */; };
+		52E5DE7A2EA94A510021BC48 /* Shimmer in Frameworks */ = {isa = PBXBuildFile; productRef = 52E5DE792EA94A510021BC48 /* Shimmer */; };
+		52E5DE7C2EA94A5D0021BC48 /* Shimmer in Frameworks */ = {isa = PBXBuildFile; productRef = 52E5DE7B2EA94A5D0021BC48 /* Shimmer */; };
+		52E5DE7F2EA969970021BC48 /* AnimateText in Frameworks */ = {isa = PBXBuildFile; productRef = 52E5DE7E2EA969970021BC48 /* AnimateText */; };
 		A1000001000000000000001 /* KeyCoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002000000000000001 /* KeyCoApp.swift */; };
 		A1000003000000000000001 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000004000000000000001 /* ContentView.swift */; };
 		A1000005000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000006000000000000001 /* Assets.xcassets */; };
 		A1000007000000000000001 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000008000000000000001 /* Preview Assets.xcassets */; };
 		A1000009000000000000001 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000010000000000000001 /* KeyboardViewController.swift */; };
+		A1000011000000000000001 /* KeyCoKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A1000012000000000000001 /* KeyCoKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A5000001000000000000001 /* ActionContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5000002000000000000001 /* ActionContainerView.swift */; };
 		A6000001000000000000001 /* ResponseContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6000002000000000000001 /* ResponseContentView.swift */; };
 		A8000002000000000000001 /* FastBlurEffect.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8000001000000000000001 /* FastBlurEffect.swift */; };
-		A9000001000000000000001 /* ReplyConfigView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9000002000000000000001 /* ReplyConfigView.swift */; };
-		AB000001000000000000001 /* ReplyEmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000002000000000000001 /* ReplyEmptyStateView.swift */; };
-		AC000001000000000000001 /* ReplyMessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC000002000000000000001 /* ReplyMessageView.swift */; };
-		A1000011000000000000001 /* KeyCoKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A1000012000000000000001 /* KeyCoKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AD000001000000000000001 /* ToneMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD000002000000000000001 /* ToneMapView.swift */; };
+		A9000001000000000000001 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9000002000000000000001 /* KeychainHelper.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -46,6 +55,13 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		524ADCC22EAD2A3800DE2382 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		524ADCC32EAD2A3800DE2382 /* MailComposeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailComposeView.swift; sourceTree = "<group>"; };
+		524ADCC42EAD2A3800DE2382 /* PrimaryButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryButton.swift; sourceTree = "<group>"; };
+		524ADCC62EAD2A3800DE2382 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		524ADCCC2EAD2A3800DE2382 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		524ADCD32EAD2A3800DE2382 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		524ADCD52EAD2A3800DE2382 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		A1000002000000000000001 /* KeyCoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCoApp.swift; sourceTree = "<group>"; };
 		A1000004000000000000001 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A1000006000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -57,9 +73,8 @@
 		A5000002000000000000001 /* ActionContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionContainerView.swift; sourceTree = "<group>"; };
 		A6000002000000000000001 /* ResponseContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseContentView.swift; sourceTree = "<group>"; };
 		A8000001000000000000001 /* FastBlurEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastBlurEffect.swift; sourceTree = "<group>"; };
-		A9000002000000000000001 /* ReplyConfigView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplyConfigView.swift; sourceTree = "<group>"; };
-		AB000002000000000000001 /* ReplyEmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplyEmptyStateView.swift; sourceTree = "<group>"; };
-		AC000002000000000000001 /* ReplyMessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplyMessageView.swift; sourceTree = "<group>"; };
+		AD000002000000000000001 /* ToneMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToneMapView.swift; sourceTree = "<group>"; };
+		A9000002000000000000001 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -67,6 +82,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				52E5DE7C2EA94A5D0021BC48 /* Shimmer in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -74,15 +90,61 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				52E5DE7A2EA94A510021BC48 /* Shimmer in Frameworks */,
+				52E5DE7F2EA969970021BC48 /* AnimateText in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		524ADCC52EAD2A3800DE2382 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				524ADCC32EAD2A3800DE2382 /* MailComposeView.swift */,
+				524ADCC42EAD2A3800DE2382 /* PrimaryButton.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		524ADCC72EAD2A3800DE2382 /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				524ADCC62EAD2A3800DE2382 /* HomeView.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		524ADCCB2EAD2A3800DE2382 /* Managers */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			sourceTree = "<group>";
+		};
+		524ADCCD2EAD2A3800DE2382 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				524ADCCC2EAD2A3800DE2382 /* AppState.swift */,
+			);
+			sourceTree = "<group>";
+		};
+		524ADCD42EAD2A3800DE2382 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				524ADCD32EAD2A3800DE2382 /* WelcomeView.swift */,
+			);
+			sourceTree = "<group>";
+		};
 		A1000021000000000000001 = {
 			isa = PBXGroup;
 			children = (
+				524ADCC22EAD2A3800DE2382 /* AppDelegate.swift */,
+				524ADCC52EAD2A3800DE2382 /* Components */,
+				524ADCC72EAD2A3800DE2382 /* Home */,
+				524ADCCB2EAD2A3800DE2382 /* Managers */,
+				524ADCCD2EAD2A3800DE2382 /* Models */,
+				524ADCD42EAD2A3800DE2382 /* Onboarding */,
+				524ADCD52EAD2A3800DE2382 /* SceneDelegate.swift */,
 				A1000022000000000000001 /* KeyCo */,
 				A1000023000000000000001 /* KeyCoKeyboard */,
 				A1000024000000000000001 /* Products */,
@@ -105,11 +167,10 @@
 			children = (
 				A5000002000000000000001 /* ActionContainerView.swift */,
 				A1000010000000000000001 /* KeyboardViewController.swift */,
+				A9000002000000000000001 /* KeychainHelper.swift */,
 				A6000002000000000000001 /* ResponseContentView.swift */,
-				A9000002000000000000001 /* ReplyConfigView.swift */,
-				AB000002000000000000001 /* ReplyEmptyStateView.swift */,
-				AC000002000000000000001 /* ReplyMessageView.swift */,
 				A8000001000000000000001 /* FastBlurEffect.swift */,
+				AD000002000000000000001 /* ToneMapView.swift */,
 				A1000018000000000000001 /* Info.plist */,
 			);
 			path = KeyCoKeyboard;
@@ -149,6 +210,8 @@
 			);
 			name = KeyCoKeyboard;
 			packageProductDependencies = (
+				52E5DE792EA94A510021BC48 /* Shimmer */,
+				52E5DE7E2EA969970021BC48 /* AnimateText */,
 			);
 			productName = KeyCoKeyboard;
 			productReference = A1000012000000000000001 /* KeyCoKeyboard.appex */;
@@ -201,6 +264,8 @@
 			);
 			mainGroup = A1000021000000000000001;
 			packageReferences = (
+				52E5DE782EA94A510021BC48 /* XCRemoteSwiftPackageReference "SwiftUI-Shimmer" */,
+				52E5DE7D2EA969970021BC48 /* XCRemoteSwiftPackageReference "AnimateText" */,
 			);
 			productRefGroup = A1000024000000000000001 /* Products */;
 			projectDirPath = "";
@@ -238,6 +303,13 @@
 			files = (
 				A1000003000000000000001 /* ContentView.swift in Sources */,
 				A1000001000000000000001 /* KeyCoApp.swift in Sources */,
+				524ADCD62EAD2A3800DE2382 /* SceneDelegate.swift in Sources */,
+				524ADCDA2EAD2A3800DE2382 /* PrimaryButton.swift in Sources */,
+				524ADCDD2EAD2A3800DE2382 /* AppDelegate.swift in Sources */,
+				524ADCE02EAD2A3800DE2382 /* MailComposeView.swift in Sources */,
+				524ADCE22EAD2A3800DE2382 /* HomeView.swift in Sources */,
+				524ADCE32EAD2A3800DE2382 /* WelcomeView.swift in Sources */,
+				524ADCE42EAD2A3800DE2382 /* AppState.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -247,10 +319,9 @@
 			files = (
 				A5000001000000000000001 /* ActionContainerView.swift in Sources */,
 				A1000009000000000000001 /* KeyboardViewController.swift in Sources */,
+				A9000001000000000000001 /* KeychainHelper.swift in Sources */,
 				A6000001000000000000001 /* ResponseContentView.swift in Sources */,
-				A9000001000000000000001 /* ReplyConfigView.swift in Sources */,
-				AB000001000000000000001 /* ReplyEmptyStateView.swift in Sources */,
-				AC000001000000000000001 /* ReplyMessageView.swift in Sources */,
+				AD000001000000000000001 /* ToneMapView.swift in Sources */,
 				A8000002000000000000001 /* FastBlurEffect.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -396,6 +467,7 @@
 				DEVELOPMENT_TEAM = F8ZMT5492T;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Keyboard Copilot";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -425,6 +497,7 @@
 				DEVELOPMENT_TEAM = F8ZMT5492T;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Keyboard Copilot";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -451,7 +524,7 @@
 				DEVELOPMENT_TEAM = F8ZMT5492T;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KeyCoKeyboard/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = KeyCoKeyboard;
+				INFOPLIST_KEY_CFBundleDisplayName = "Keyboard Copilot";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -476,7 +549,7 @@
 				DEVELOPMENT_TEAM = F8ZMT5492T;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KeyCoKeyboard/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = KeyCoKeyboard;
+				INFOPLIST_KEY_CFBundleDisplayName = "Keyboard Copilot";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -524,6 +597,43 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		52E5DE782EA94A510021BC48 /* XCRemoteSwiftPackageReference "SwiftUI-Shimmer" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/markiv/SwiftUI-Shimmer";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.1;
+			};
+		};
+		52E5DE7D2EA969970021BC48 /* XCRemoteSwiftPackageReference "AnimateText" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/jasudev/AnimateText";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.5.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		52E5DE792EA94A510021BC48 /* Shimmer */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 52E5DE782EA94A510021BC48 /* XCRemoteSwiftPackageReference "SwiftUI-Shimmer" */;
+			productName = Shimmer;
+		};
+		52E5DE7B2EA94A5D0021BC48 /* Shimmer */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 52E5DE782EA94A510021BC48 /* XCRemoteSwiftPackageReference "SwiftUI-Shimmer" */;
+			productName = Shimmer;
+		};
+		52E5DE7E2EA969970021BC48 /* AnimateText */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 52E5DE7D2EA969970021BC48 /* XCRemoteSwiftPackageReference "AnimateText" */;
+			productName = AnimateText;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A1000014000000000000001 /* Project object */;
 }

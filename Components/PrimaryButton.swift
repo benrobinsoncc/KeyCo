@@ -7,7 +7,7 @@ struct PrimaryButton: View {
 
     var body: some View {
         Button(action: {
-            HapticFeedbackManager.shared.selection()
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
             action()
         }) {
             Text(title)
