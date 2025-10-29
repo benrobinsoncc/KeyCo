@@ -65,6 +65,7 @@ final class ActionContainerView: UIView {
     private var buttonTrailingConstraint: NSLayoutConstraint!
     private var buttonBottomConstraint: NSLayoutConstraint!
     private var bottomBarHeightConstraint: NSLayoutConstraint!
+    private var bottomBarTopConstraint: NSLayoutConstraint!
 
     // MARK: - Initialization
 
@@ -144,8 +145,13 @@ final class ActionContainerView: UIView {
             dividerView.leadingAnchor.constraint(equalTo: backgroundView.leadingAnchor),
             dividerView.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor),
             dividerView.heightAnchor.constraint(equalToConstant: 1),
-            contentBottomConstraint,
-            bottomBar.topAnchor.constraint(equalTo: dividerView.bottomAnchor),
+            contentBottomConstraint
+        ])
+        
+        // Bottom bar can connect to either divider or content container
+        bottomBarTopConstraint = bottomBar.topAnchor.constraint(equalTo: dividerView.bottomAnchor)
+        NSLayoutConstraint.activate([
+            bottomBarTopConstraint,
             bottomBar.leadingAnchor.constraint(equalTo: backgroundView.leadingAnchor),
             bottomBar.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor),
             bottomBar.bottomAnchor.constraint(equalTo: backgroundView.bottomAnchor),
@@ -229,6 +235,21 @@ final class ActionContainerView: UIView {
         buttonTrailingConstraint.constant = -buttonSideInset
         buttonBottomConstraint.constant = -8
         bottomBarHeightConstraint.constant = 8 + 8 + 32
+        layoutIfNeeded()
+    }
+    
+    func setDividerHidden(_ hidden: Bool) {
+        dividerView.isHidden = hidden
+        dividerView.alpha = hidden ? 0 : 1
+        
+        // Update bottom bar constraint - connect to divider or directly to content
+        bottomBarTopConstraint.isActive = false
+        if hidden {
+            bottomBarTopConstraint = bottomBar.topAnchor.constraint(equalTo: contentContainer.bottomAnchor)
+        } else {
+            bottomBarTopConstraint = bottomBar.topAnchor.constraint(equalTo: dividerView.bottomAnchor)
+        }
+        bottomBarTopConstraint.isActive = true
         layoutIfNeeded()
     }
 

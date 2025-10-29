@@ -8,13 +8,14 @@ class KeyboardViewController: UIInputViewController {
     // Mode system
     private enum KeyboardMode {
         case home
-        case write
+        case reply
+        case rewrite
         case google
         case chatgpt
     }
 
     private enum KeyboardHeight: CGFloat {
-        case small = 255  // Aligned with default UK English keyboard
+        case small = 250
         case large = 700
     }
 
@@ -27,36 +28,129 @@ class KeyboardViewController: UIInputViewController {
     private var contentArea: UIView!
     // Content views for each mode
     private var homeView: UIView!
-    private var writeView: UIView!
+    private var replyView: UIView!
+    private var rewriteView: UIView!
     private var googleView: UIView!
     private var chatgptView: UIView!
 
-    private var writeContainer: ActionContainerView!
+    private var replyContainer: ActionContainerView!
+    private var rewriteContainer: ActionContainerView!
     private var googleContainer: ActionContainerView!
     private var chatgptContainer: ActionContainerView!
     private var googleWebView: WKWebView?
     private var currentGoogleURL: URL?
 
-    // Write mode components
-    private var toneMapView: ToneMapView!
-    private var messagePreviewLabel: UILabel!
-    private var emptyStateLabel: UILabel!
-    private var loadingIndicator: UIActivityIndicatorView!
-    private var isWriting: Bool = false
-    private var lastPosition: (x: Float, y: Float)?
-    private var debounceTimer: Timer?
-    private var originalText: String = ""
-    private var currentTask: URLSessionDataTask?
+    // Reply mode views
+    private var replyEmptyStateView: ReplyEmptyStateView!
+    private var replyMessageView: ReplyMessageView!
+    private var replyCurrentStep: ReplyStep = .empty
+    private var replySettings = ReplySettings()
+    private var pastedMessage: String = ""
 
-    // ChatGPT content view
+    private enum ReplyStep {
+        case empty
+        case preview
+        case generated
+    }
+
+    private enum ReplySentimentOption: CaseIterable {
+        case positive, neutral, negative
+
+        var menuTitle: String {
+            switch self {
+            case .positive: return "Positive"
+            case .neutral: return "Neutral"
+            case .negative: return "Negative"
+            }
+        }
+
+        var summaryTitle: String { 
+            switch self {
+            case .positive: return "Positive"
+            case .neutral: return "Neutral" 
+            case .negative: return "Negative"
+            }
+        }
+
+        var instructionText: String {
+            switch self {
+            case .positive: return "Be positive, upbeat, and enthusiastic."
+            case .neutral: return "Maintain a neutral, balanced tone."
+            case .negative: return "Be critical or express concerns appropriately."
+            }
+        }
+    }
+
+    private enum ReplyLengthOption: CaseIterable {
+        case short, medium, long
+
+        var menuTitle: String {
+            switch self {
+            case .short: return "Short"
+            case .medium: return "Medium"
+            case .long: return "Long"
+            }
+        }
+
+        var summaryTitle: String {
+            switch self {
+            case .medium: return "Med"
+            default: return menuTitle
+            }
+        }
+
+        var instructionText: String {
+            switch self {
+            case .short: return "Keep your reply brief (1-2 sentences)."
+            case .medium: return "Write a medium-length reply (2-4 sentences)."
+            case .long: return "Write a detailed, thorough reply (4+ sentences)."
+            }
+        }
+    }
+
+    private enum ReplyToneOption: CaseIterable {
+        case professional, casual, friendly
+
+        var menuTitle: String {
+            switch self {
+            case .professional: return "Professional"
+            case .casual: return "Casual"
+            case .friendly: return "Friendly"
+            }
+        }
+
+        var summaryTitle: String {
+            switch self {
+            case .professional: return "Professional"
+            case .casual: return "Casual"
+            case .friendly: return "Friendly"
+            }
+        }
+
+        var instructionText: String {
+            switch self {
+            case .professional: return "Use professional, formal language."
+            case .casual: return "Use casual, relaxed language."
+            case .friendly: return "Be warm, friendly, and personable."
+            }
+        }
+    }
+
+    private struct ReplySettings {
+        var sentiment: ReplySentimentOption = .neutral
+        var tone: ReplyToneOption = .professional
+        var length: ReplyLengthOption = .medium
+    }
+
+    // Response content views
+    private var rewriteContentView: ResponseContentView!
     private var chatgptContentView: ResponseContentView!
 
     private let containerMargin: CGFloat = 3
     private let cornerRadius: CGFloat = 20
 
     // ChatGPT API
-    // TODO: Move API key to secure configuration/Keychain
-    private let chatGPTAPIKey = "YOUR_API_KEY_HERE"
+    private let chatGPTAPIKey = "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"
     // MARK: - Lifecycle
 
     override func viewDidLoad() {
@@ -143,7 +237,8 @@ class KeyboardViewController: UIInputViewController {
 
         // Setup all mode views
         setupHomeView()
-        setupWriteView()
+        setupReplyView()
+        setupRewriteView()
         setupGoogleView()
         setupChatGPTView()
 
@@ -203,10 +298,15 @@ class KeyboardViewController: UIInputViewController {
         let spacing: CGFloat = 8
         let padding: CGFloat = 3
 
-        // Write button (spans both top positions)
-        let writeButton = createActionButton(title: "Write", color: .white)
-        writeButton.addTarget(self, action: #selector(writeTapped), for: .touchUpInside)
-        homeView.addSubview(writeButton)
+        // Reply button (top-left)
+        let replyButton = createActionButton(title: "Reply", color: .white)
+        replyButton.addTarget(self, action: #selector(replyTapped), for: .touchUpInside)
+        homeView.addSubview(replyButton)
+
+        // Rewrite button (top-right)
+        let rewriteButton = createActionButton(title: "Rewrite", color: .white)
+        rewriteButton.addTarget(self, action: #selector(rewriteTapped), for: .touchUpInside)
+        homeView.addSubview(rewriteButton)
 
         // Google button (bottom-left)
         let googleButton = createActionButton(title: "Google", color: .white)
@@ -219,10 +319,12 @@ class KeyboardViewController: UIInputViewController {
         homeView.addSubview(chatgptButton)
 
         NSLayoutConstraint.activate([
-            // Write (spans top)
-            writeButton.topAnchor.constraint(equalTo: homeView.topAnchor, constant: padding),
-            writeButton.leadingAnchor.constraint(equalTo: homeView.leadingAnchor, constant: padding),
-            writeButton.trailingAnchor.constraint(equalTo: homeView.trailingAnchor, constant: -padding),
+            // Reply (top-left)
+            replyButton.topAnchor.constraint(equalTo: homeView.topAnchor, constant: padding),
+            replyButton.leadingAnchor.constraint(equalTo: homeView.leadingAnchor, constant: padding),
+            // Rewrite (top-right)
+            rewriteButton.topAnchor.constraint(equalTo: homeView.topAnchor, constant: padding),
+            rewriteButton.trailingAnchor.constraint(equalTo: homeView.trailingAnchor, constant: -padding),
 
             // Google (bottom-left)
             googleButton.bottomAnchor.constraint(equalTo: homeView.bottomAnchor, constant: -padding),
@@ -232,19 +334,27 @@ class KeyboardViewController: UIInputViewController {
             chatgptButton.bottomAnchor.constraint(equalTo: homeView.bottomAnchor, constant: -padding),
             chatgptButton.trailingAnchor.constraint(equalTo: homeView.trailingAnchor, constant: -padding),
 
-            // Horizontal spacing between Google and ChatGPT
+            // Horizontal spacing
+            rewriteButton.leadingAnchor.constraint(equalTo: replyButton.trailingAnchor, constant: spacing),
             chatgptButton.leadingAnchor.constraint(equalTo: googleButton.trailingAnchor, constant: spacing),
 
             // Vertical spacing
-            googleButton.topAnchor.constraint(equalTo: writeButton.bottomAnchor, constant: spacing),
-            chatgptButton.topAnchor.constraint(equalTo: writeButton.bottomAnchor, constant: spacing)
+            googleButton.topAnchor.constraint(equalTo: replyButton.bottomAnchor, constant: spacing),
+            chatgptButton.topAnchor.constraint(equalTo: rewriteButton.bottomAnchor, constant: spacing)
         ])
 
-        // Equal sizing for bottom buttons
-        googleButton.widthAnchor.constraint(equalTo: chatgptButton.widthAnchor).isActive = true
+        // Equal sizing to keep grid uniform
+        replyButton.widthAnchor.constraint(equalTo: rewriteButton.widthAnchor).isActive = true
+        replyButton.widthAnchor.constraint(equalTo: googleButton.widthAnchor).isActive = true
+        replyButton.widthAnchor.constraint(equalTo: chatgptButton.widthAnchor).isActive = true
+
+        replyButton.heightAnchor.constraint(equalTo: replyButton.widthAnchor).isActive = true
+        rewriteButton.heightAnchor.constraint(equalTo: rewriteButton.widthAnchor).isActive = true
         googleButton.heightAnchor.constraint(equalTo: googleButton.widthAnchor).isActive = true
         chatgptButton.heightAnchor.constraint(equalTo: chatgptButton.widthAnchor).isActive = true
-        googleButton.heightAnchor.constraint(equalTo: chatgptButton.heightAnchor).isActive = true
+
+        replyButton.heightAnchor.constraint(equalTo: googleButton.heightAnchor).isActive = true
+        rewriteButton.heightAnchor.constraint(equalTo: chatgptButton.heightAnchor).isActive = true
     }
 
     private func createActionButton(title: String, color: UIColor) -> UIButton {
@@ -258,120 +368,98 @@ class KeyboardViewController: UIInputViewController {
         return button
     }
 
-    private func setupWriteView() {
-        writeView = UIView()
-        writeView.backgroundColor = .clear
-        writeView.translatesAutoresizingMaskIntoConstraints = false
-        contentArea.addSubview(writeView)
+    private func setupReplyView() {
+        replyView = UIView()
+        replyView.backgroundColor = .clear
+        replyView.translatesAutoresizingMaskIntoConstraints = false
+        contentArea.addSubview(replyView)
 
         NSLayoutConstraint.activate([
-            writeView.topAnchor.constraint(equalTo: contentArea.topAnchor),
-            writeView.leadingAnchor.constraint(equalTo: contentArea.leadingAnchor),
-            writeView.trailingAnchor.constraint(equalTo: contentArea.trailingAnchor),
-            writeView.bottomAnchor.constraint(equalTo: contentArea.bottomAnchor)
+            replyView.topAnchor.constraint(equalTo: contentArea.topAnchor),
+            replyView.leadingAnchor.constraint(equalTo: contentArea.leadingAnchor),
+            replyView.trailingAnchor.constraint(equalTo: contentArea.trailingAnchor),
+            replyView.bottomAnchor.constraint(equalTo: contentArea.bottomAnchor)
         ])
 
-        // Create container for write mode UI
-        let writeContentView = UIView()
-        writeContentView.backgroundColor = .clear
-        writeContentView.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Setup tone map
-        toneMapView = ToneMapView()
-        toneMapView.translatesAutoresizingMaskIntoConstraints = false
-        
-        // While dragging - just update coordinates (no API call)
-        toneMapView.onPositionChanged = { [weak self] x, y in
-            NSLog("[Write Mode] Dragging - x=\(x), y=\(y)")
-            // Don't update preview label - tone map fills entire space now
-        }
-        
-        // When released - trigger AI call immediately
-        toneMapView.onGestureEnded = { [weak self] x, y in
-            NSLog("[Write Mode] Gesture ended - calling AI with x=\(x), y=\(y)")
-            
-            let currentText = self?.currentDocumentText() ?? ""
-            guard !currentText.isEmpty else {
-                NSLog("[Write Mode] No text to rewrite")
-                return
-            }
-            
-            // Visual feedback is now shown in the tone map selector loading spinner
-            
-            // Call AI immediately
-            self?.regenerateTextWithTone(tone: x, length: y, originalText: currentText)
-        }
-        
-        writeContentView.addSubview(toneMapView)
-        NSLog("[Write Mode] Tone map view initialized")
-        
-        // Setup message preview label
-        messagePreviewLabel = UILabel()
-        messagePreviewLabel.font = .systemFont(ofSize: 11, weight: .regular)
-        messagePreviewLabel.textColor = .secondaryLabel
-        messagePreviewLabel.textAlignment = .center
-        messagePreviewLabel.numberOfLines = 4
-        messagePreviewLabel.translatesAutoresizingMaskIntoConstraints = false
-        writeContentView.addSubview(messagePreviewLabel)
-        
-        // Setup empty state label (hidden by default)
-        emptyStateLabel = UILabel()
-        emptyStateLabel.isHidden = true
-        emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
-        writeContentView.addSubview(emptyStateLabel)
-        
-        // Setup loading indicator
-        loadingIndicator = UIActivityIndicatorView(style: .medium)
-        loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
-        loadingIndicator.hidesWhenStopped = true
-        writeContentView.addSubview(loadingIndicator)
+        // Create empty state view
+        replyEmptyStateView = ReplyEmptyStateView()
 
-        NSLayoutConstraint.activate([
-            // Tone map with 1pt margin on all sides
-            toneMapView.topAnchor.constraint(equalTo: writeContentView.topAnchor, constant: 1),
-            toneMapView.leadingAnchor.constraint(equalTo: writeContentView.leadingAnchor, constant: 1),
-            toneMapView.trailingAnchor.constraint(equalTo: writeContentView.trailingAnchor, constant: -1),
-            toneMapView.bottomAnchor.constraint(equalTo: writeContentView.bottomAnchor),
-            
-            // Empty state label (centered, hidden by default)
-            emptyStateLabel.centerXAnchor.constraint(equalTo: writeContentView.centerXAnchor),
-            emptyStateLabel.centerYAnchor.constraint(equalTo: writeContentView.centerYAnchor),
-            emptyStateLabel.leadingAnchor.constraint(equalTo: writeContentView.leadingAnchor, constant: 20),
-            emptyStateLabel.trailingAnchor.constraint(equalTo: writeContentView.trailingAnchor, constant: -20),
-            
-            // Loading indicator centered on tone map
-            loadingIndicator.centerXAnchor.constraint(equalTo: toneMapView.centerXAnchor),
-            loadingIndicator.centerYAnchor.constraint(equalTo: toneMapView.centerYAnchor),
-            
-            // Message preview label (hidden when tone map is shown, but still needs constraints)
-            messagePreviewLabel.centerXAnchor.constraint(equalTo: writeContentView.centerXAnchor),
-            messagePreviewLabel.centerYAnchor.constraint(equalTo: writeContentView.centerYAnchor),
-            messagePreviewLabel.leadingAnchor.constraint(equalTo: writeContentView.leadingAnchor, constant: 12),
-            messagePreviewLabel.trailingAnchor.constraint(equalTo: writeContentView.trailingAnchor, constant: -12)
-        ])
+        // Create message view for preview and generated reply
+        replyMessageView = ReplyMessageView()
 
-        writeContainer = createActionContainer(
+        // Initially show empty state (Step 1)
+        replyContainer = createActionContainer(
             title: nil,
-            contentView: writeContentView,
+            contentView: replyEmptyStateView,
+            buttonConfigs: replyInitialButtons(),
+            showsToggle: true,
+            contentInsets: UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        )
+        replyView.addSubview(replyContainer)
+        pinContainer(replyContainer, to: replyView)
+    }
+
+    private func replyInitialButtons() -> [ActionContainerView.ActionButtonConfiguration] {
+        [
+            .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
+                self?.cancelReplyFlow()
+            }),
+            .init(style: .text(title: "Paste", symbolName: nil, isPrimary: true), action: { [weak self] in
+                self?.handleReplyPaste()
+            })
+        ]
+    }
+
+    private func resetReplyFlow() {
+        replyCurrentStep = .empty
+        replySettings = ReplySettings()
+        pastedMessage = ""
+        replyMessageView.message = ""
+
+        guard replyContainer != nil else { return }
+        replyContainer.setContentView(replyEmptyStateView)
+        replyContainer.configureButtons(replyInitialButtons())
+    }
+
+    private func cancelReplyFlow() {
+        resetReplyFlow()
+        switchToMode(.home, height: .small)
+    }
+
+    private func setupRewriteView() {
+        rewriteView = UIView()
+        rewriteView.backgroundColor = .clear
+        rewriteView.translatesAutoresizingMaskIntoConstraints = false
+        contentArea.addSubview(rewriteView)
+
+        NSLayoutConstraint.activate([
+            rewriteView.topAnchor.constraint(equalTo: contentArea.topAnchor),
+            rewriteView.leadingAnchor.constraint(equalTo: contentArea.leadingAnchor),
+            rewriteView.trailingAnchor.constraint(equalTo: contentArea.trailingAnchor),
+            rewriteView.bottomAnchor.constraint(equalTo: contentArea.bottomAnchor)
+        ])
+
+        // Create response content view
+        rewriteContentView = ResponseContentView()
+        rewriteContentView.title = "REWRITE"
+        rewriteContentView.responseText = ""
+
+        rewriteContainer = createActionContainer(
+            title: nil,
+            contentView: rewriteContentView,
             buttonConfigs: [
                 .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
                     self?.switchToMode(.home, height: .small)
                 }),
-                .init(style: .icon(symbolName: "arrow.uturn.backward", accessibilityLabel: "Undo"), action: { [weak self] in
-                    self?.undoWriteMode()
-                }),
-                .init(style: .spacer),
-                .init(style: .text(title: "Done", symbolName: nil, isPrimary: false), action: { [weak self] in
-                    self?.dismissWriteMode()
+                .init(style: .text(title: "Generate", symbolName: "sparkles", isPrimary: true), action: { [weak self] in
+                    self?.handlePlaceholderAction(named: "Generate Rewrite")
                 })
             ],
-            showsToggle: false,
-            contentInsets: UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
+            showsToggle: true,
+            contentInsets: UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         )
-        // Hide divider for write mode only
-        writeContainer.setDividerHidden(true)
-        writeView.addSubview(writeContainer)
-        pinContainer(writeContainer, to: writeView)
+        rewriteView.addSubview(rewriteContainer)
+        pinContainer(rewriteContainer, to: rewriteView)
     }
 
     private func setupGoogleView() {
@@ -463,14 +551,13 @@ class KeyboardViewController: UIInputViewController {
 
     // MARK: - Actions
 
-    @objc private func writeTapped() {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        switchToMode(.write, height: .small)
-        
-        // Delay update to ensure views are rendered
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            self?.updateWriteViewState()
-        }
+    @objc private func replyTapped() {
+        resetReplyFlow()
+        switchToMode(.reply, height: .small)
+    }
+
+    @objc private func rewriteTapped() {
+        switchToMode(.rewrite, height: .small)
     }
 
     @objc private func googleTapped() {
@@ -518,7 +605,8 @@ class KeyboardViewController: UIInputViewController {
     private func updateModeVisibility() {
         // Hide all views
         homeView.alpha = 0
-        writeView.alpha = 0
+        replyView.alpha = 0
+        rewriteView.alpha = 0
         googleView.alpha = 0
         chatgptView.alpha = 0
 
@@ -526,8 +614,10 @@ class KeyboardViewController: UIInputViewController {
         switch currentMode {
         case .home:
             homeView.alpha = 1
-        case .write:
-            writeView.alpha = 1
+        case .reply:
+            replyView.alpha = 1
+        case .rewrite:
+            rewriteView.alpha = 1
         case .google:
             googleView.alpha = 1
         case .chatgpt:
@@ -537,7 +627,8 @@ class KeyboardViewController: UIInputViewController {
 
     private func updateContainerExpansionState() {
         let isExpanded = currentHeight == .large
-        writeContainer?.setExpanded(isExpanded)
+        replyContainer?.setExpanded(isExpanded)
+        rewriteContainer?.setExpanded(isExpanded)
         googleContainer?.setExpanded(isExpanded)
         chatgptContainer?.setExpanded(isExpanded)
     }
@@ -573,9 +664,10 @@ class KeyboardViewController: UIInputViewController {
         let modeValue: Int
         switch currentMode {
         case .home: modeValue = 0
-        case .write: modeValue = 1
-        case .google: modeValue = 2
-        case .chatgpt: modeValue = 3
+        case .reply: modeValue = 1
+        case .rewrite: modeValue = 2
+        case .google: modeValue = 3
+        case .chatgpt: modeValue = 4
         }
         defaults.set(modeValue, forKey: "KeyCo_currentMode")
         defaults.set(currentHeight.rawValue, forKey: "KeyCo_currentHeight")
@@ -590,9 +682,10 @@ class KeyboardViewController: UIInputViewController {
             let modeValue = defaults.integer(forKey: "KeyCo_currentMode")
             switch modeValue {
             case 0: currentMode = .home
-            case 1: currentMode = .write
-            case 2: currentMode = .google
-            case 3: currentMode = .chatgpt
+            case 1: currentMode = .reply
+            case 2: currentMode = .rewrite
+            case 3: currentMode = .google
+            case 4: currentMode = .chatgpt
             default: currentMode = .home
             }
         }
@@ -816,339 +909,6 @@ class KeyboardViewController: UIInputViewController {
         NSLog("[KeyCoKeyboard] Action triggered: %@", name)
     }
 
-    // MARK: - Write Mode Helpers
-    
-    private func updateWriteViewState() {
-        guard let previewLabel = messagePreviewLabel, let emptyLabel = emptyStateLabel, let toneMap = toneMapView else { 
-            NSLog("[Write Mode] Cannot update state - views not ready")
-            return
-        }
-
-        let text = currentDocumentText()
-        NSLog("[Write Mode] Current text from document: '\(text)'")
-        
-        if text.isEmpty {
-            // Empty state
-            previewLabel.isHidden = true
-            emptyLabel.isHidden = false
-            toneMap.isEnabled = false
-            toneMap.alpha = 0.3
-            originalText = ""
-            NSLog("[Write Mode] Text is empty - showing empty state")
-        } else {
-            // Active state - tone map fills entire space
-            originalText = text
-            previewLabel.isHidden = true
-            emptyLabel.isHidden = true
-            toneMap.isEnabled = true
-            toneMap.alpha = 1.0
-            NSLog("[Write Mode] Text captured: '\(originalText)' - tone map enabled")
-        }
-    }
-    
-    
-    private func regenerateTextWithTone(tone: Float, length: Float, originalText: String? = nil) {
-        let textToUse = originalText ?? self.originalText
-        
-        NSLog("[Write Mode] regenerateTextWithTone called with tone=\(tone), length=\(length), text: '\(textToUse)'")
-        
-        guard !textToUse.isEmpty else {
-            NSLog("[Write Mode] Cannot regenerate - text is empty")
-            return
-        }
-        
-        // Cancel any existing API task
-        currentTask?.cancel()
-        
-        NSLog("[Write Mode] Starting AI regeneration for text: '\(textToUse)'")
-        isWriting = true
-        
-        // Show spinner in the selector knob
-        DispatchQueue.main.async { [weak self] in
-            self?.toneMapView?.setLoading(true)
-        }
-        
-        // Visual feedback is shown via the loading spinner in the tone map selector
-        
-        // Add a configuration with extended timeout and logging
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 30
-        config.timeoutIntervalForResource = 60
-        let session = URLSession(configuration: config)
-        
-        // Build prompt based on position with explicit constraints
-        let toneDescription = describeTone(tone)
-        let lengthDescription = describeLength(length)
-        let (maxWords, maxSentences) = getLengthConstraints(length)
-        
-        let prompt = """
-        Rewrite the following message with STRICTLY the following requirements:
-        
-        TONE: \(toneDescription)
-        LENGTH: \(lengthDescription)
-        
-        CRITICAL CONSTRAINTS:
-        - Maximum word count: \(maxWords) words
-        - Maximum sentences: \(maxSentences)
-        - You MUST stay within these limits
-        - Do not include any explanations, just the rewritten message
-        - Preserve the core meaning and intent
-        
-        Original message: \(textToUse)
-        
-        Rewritten message (strictly within limits):
-        """
-
-        // Make API request
-        guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else {
-            handleWriteError("Invalid URL")
-            return
-        }
-        
-        NSLog("[Write Mode] URL: \(url.absoluteString)")
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(chatGPTAPIKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
-
-        // Calculate dynamic max_tokens based on length
-        // Brief responses need fewer tokens, detailed need more
-        let maxTokens = calculateMaxTokens(for: length)
-        
-        let requestBody: [String: Any] = [
-            "model": "gpt-3.5-turbo",  // Using cheaper model
-            "messages": [
-                ["role": "user", "content": prompt]
-            ],
-            "max_tokens": maxTokens
-        ]
-
-        guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else {
-            handleWriteError("Failed to create request")
-            return
-        }
-
-        request.httpBody = httpBody
-
-        NSLog("[Write Mode] Creating URLSession task with URL: \(request.url?.absoluteString ?? "nil")")
-
-        let task = session.dataTask(with: request) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                // Clear the current task reference
-                self?.currentTask = nil
-                
-                guard let self = self else { return }
-                
-                self.isWriting = false
-                
-                // Hide spinner in selector knob
-                self.toneMapView?.setLoading(false)
-
-                NSLog("[Write Mode] Response received. Error: \(error?.localizedDescription ?? "none"), Data: \(data != nil ? "present" : "nil")")
-
-                if let error = error {
-                    // Ignore cancellation errors
-                    if (error as NSError).code != NSURLErrorCancelled {
-                        NSLog("[Write Mode] Network error: \(error.localizedDescription)")
-                        self.handleWriteError(error.localizedDescription)
-                    }
-                    return
-                }
-
-                guard let data = data else {
-                    self.handleWriteError("No data received")
-                    return
-                }
-
-                // Log the raw response for debugging
-                if let rawString = String(data: data, encoding: .utf8) {
-                    NSLog("[Write Mode] Raw API response: \(rawString)")
-                }
-
-                do {
-                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                        NSLog("[Write Mode] Parsed JSON keys: \(json.keys)")
-                        
-                        // Check for API errors first
-                        if let error = json["error"] as? [String: Any],
-                           let errorMessage = error["message"] as? String {
-                            NSLog("[Write Mode] API Error: \(errorMessage)")
-                            self.handleWriteError("API Error: \(errorMessage)")
-                            return
-                        }
-                        
-                        if let choices = json["choices"] as? [[String: Any]],
-                           let firstChoice = choices.first {
-                            NSLog("[Write Mode] First choice: \(firstChoice)")
-                            
-                            if let message = firstChoice["message"] as? [String: Any],
-                       let content = message["content"] as? String {
-                                let newText = content.trimmingCharacters(in: .whitespacesAndNewlines)
-                                NSLog("[Write Mode] Got AI response: '\(newText)'")
-                                
-                                // Try to replace text
-                                self.replaceTextFieldContent(with: newText)
-                    } else {
-                                NSLog("[Write Mode] Failed to parse message or content")
-                                self.handleWriteError("Invalid message format")
-                            }
-                        } else {
-                            NSLog("[Write Mode] Failed to parse choices")
-                            self.handleWriteError("Invalid choices format")
-                        }
-                    } else {
-                        NSLog("[Write Mode] Failed to parse JSON")
-                        self.handleWriteError("Invalid JSON format")
-                    }
-                } catch {
-                    NSLog("[Write Mode] JSON parsing error: \(error)")
-                    self.handleWriteError("Failed to parse response: \(error.localizedDescription)")
-                }
-            }
-        }
-
-        currentTask = task
-        task.resume()
-    }
-
-    private func describeTone(_ value: Float) -> String {
-        // X-axis: 0 = Friendly/Casual (left), 1 = Formal (right)
-        // Use smooth interpolation for more granular control
-        if value < 0.15 {
-            return "very casual and friendly, use contractions like 'you're' and 'I'll', keep it conversational"
-        } else if value < 0.35 {
-            return "friendly and warm, conversational but slightly more polished"
-        } else if value < 0.50 {
-            return "professional yet approachable, balanced between friendly and formal"
-        } else if value < 0.70 {
-            return "professional and clear, use standard business language"
-        } else if value < 0.85 {
-            return "formal and professional, avoid contractions, use proper business etiquette"
-        } else {
-            return "very formal and professional, use formal language, avoid casual expressions entirely"
-        }
-    }
-    
-    private func describeLength(_ value: Float) -> String {
-        // Y-axis: 0 = Detailed (top), 1 = Brief (bottom)
-        // Provide clearer instructions with specific constraints
-        if value < 0.20 {
-            return "detailed and comprehensive - include all important points and context"
-        } else if value < 0.40 {
-            return "moderately detailed - include key points with some context"
-        } else if value < 0.60 {
-            return "concise and focused - include only essential information"
-        } else if value < 0.80 {
-            return "brief and to-the-point - essential information only, no extra details"
-        } else {
-            return "extremely brief - absolute minimum words, single thought only"
-        }
-    }
-    
-    /// Returns (maxWords, maxSentences) based on length value
-    private func getLengthConstraints(_ value: Float) -> (Int, Int) {
-        // Y-axis: 0 = Detailed (top), 1 = Brief (bottom)
-        if value < 0.20 {
-            return (100, 3)  // Detailed: up to 100 words, 3 sentences
-        } else if value < 0.40 {
-            return (60, 2)   // Moderately detailed: up to 60 words, 2 sentences
-        } else if value < 0.60 {
-            return (40, 2)   // Concise: up to 40 words, 2 sentences
-        } else if value < 0.80 {
-            return (25, 1)   // Brief: up to 25 words, 1 sentence
-        } else {
-            return (15, 1)   // Extremely brief: up to 15 words, 1 sentence
-        }
-    }
-    
-    /// Calculates max_tokens based on length preference
-    private func calculateMaxTokens(for length: Float) -> Int {
-        // Scale tokens: brief responses need fewer tokens, detailed need more
-        // Base calculation: roughly 4 characters per token, plus some buffer
-        let (maxWords, _) = getLengthConstraints(length)
-        // Average word length ~5 chars, so: maxWords * 5 / 4 = tokens
-        // Add 50% buffer for safety, then round up
-        let calculated = Int(Double(maxWords) * 5.0 / 4.0 * 1.5)
-        // Ensure reasonable bounds
-        return min(max(calculated, 30), 200)  // Between 30 and 200 tokens
-    }
-    
-    private func handleWriteError(_ message: String) {
-        NSLog("[KeyCoKeyboard] Write error: %@", message)
-        messagePreviewLabel?.text = "Error: \(message)"
-        messagePreviewLabel?.textColor = .systemRed
-    }
-    
-    private func replaceTextFieldContent(with newText: String) {
-        NSLog("[Write Mode] ════════════════════════════════")
-        NSLog("[Write Mode] REPLACING TEXT - '\(newText)'")
-        NSLog("[Write Mode] ════════════════════════════════")
-        
-        // Get current text BEFORE deletion
-        let beforeText = textDocumentProxy.documentContextBeforeInput ?? ""
-        let afterText = textDocumentProxy.documentContextAfterInput ?? ""
-        let totalTextBefore = beforeText + afterText
-        
-        NSLog("[Write Mode] BEFORE: '\(totalTextBefore)' (before: \(beforeText.count), after: \(afterText.count))")
-        
-        // Clear all text by calling deleteBackward enough times
-        let totalCharsToDelete = totalTextBefore.count
-        NSLog("[Write Mode] Deleting all \(totalCharsToDelete) characters")
-        
-        for i in 0..<totalCharsToDelete {
-            textDocumentProxy.deleteBackward()
-            if (i + 1) % 20 == 0 || i == totalCharsToDelete - 1 {
-                NSLog("[Write Mode] Deleted \(i + 1)/\(totalCharsToDelete) chars")
-            }
-        }
-        
-        NSLog("[Write Mode] All text cleared, now inserting new text")
-        
-        // Insert new text
-        textDocumentProxy.insertText(newText)
-        
-        // Verify immediately
-        let verifyBefore = textDocumentProxy.documentContextBeforeInput ?? ""
-        let verifyAfter = textDocumentProxy.documentContextAfterInput ?? ""
-        let verifyText = verifyBefore + verifyAfter
-        
-        NSLog("[Write Mode] AFTER: '\(verifyText)'")
-        
-        if verifyText == newText {
-            NSLog("[Write Mode] ✓ SUCCESS - Text replaced correctly!")
-        } else {
-            NSLog("[Write Mode] ✗ FAILED - Expected '\(newText)' but got '\(verifyText)'")
-        }
-        
-        // Text replacement feedback is handled by the tone map loading state
-    }
-    
-    private func undoWriteMode() {
-        guard !originalText.isEmpty else {
-            NSLog("[Write Mode] No original text to undo")
-            return
-        }
-        
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        
-        // Restore original text
-        replaceTextFieldContent(with: originalText)
-        
-        NSLog("[Write Mode] Undo - restored original text: '\(originalText)'")
-    }
-    
-    
-    private func dismissWriteMode() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        
-        // Dismiss keyboard extension and return to default keyboard
-        advanceToNextInputMode()
-        
-        NSLog("[Write Mode] Dismissed - returning to default keyboard")
-    }
-    
     // MARK: - ChatGPT Helpers
 
     private func queryChatGPT() {
@@ -1241,9 +1001,242 @@ class KeyboardViewController: UIInputViewController {
         guard !text.isEmpty, text != "Loading...", !text.hasPrefix("Error:") else { return }
         textDocumentProxy.insertText("\n\n\(text)")
     }
-}
 
-// MARK: - WKWebView Delegate
+    // MARK: - Reply Mode Handlers
+
+    private func handleReplyPaste() {
+        // Read clipboard
+        guard let clipboardText = UIPasteboard.general.string, !clipboardText.isEmpty else {
+            // Show error in content area
+            showReplyEmptyClipboardError()
+            return
+        }
+
+        pastedMessage = clipboardText
+        replyCurrentStep = .preview
+        showReplyPreview()
+    }
+
+    private func showReplyEmptyClipboardError() {
+        // Create error view (reuse empty state but with error message)
+        let errorView = UIView()
+        errorView.backgroundColor = .clear
+
+        let label = UILabel()
+        label.text = "Clipboard is empty. Copy a message first."
+        label.font = .systemFont(ofSize: 15, weight: .regular)
+        label.textColor = .systemRed
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.translatesAutoresizingMaskIntoConstraints = false
+        errorView.addSubview(label)
+
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: errorView.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: errorView.centerYAnchor),
+            label.leadingAnchor.constraint(greaterThanOrEqualTo: errorView.leadingAnchor, constant: 20),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: errorView.trailingAnchor, constant: -20)
+        ])
+
+        replyContainer.setContentView(errorView)
+
+        // Reset back to empty state after 2 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            self?.replyContainer.setContentView(self!.replyEmptyStateView)
+        }
+    }
+
+    private func showReplyPreview() {
+        // Show Step 2: message preview with settings buttons
+        replyMessageView.message = pastedMessage
+
+        replyCurrentStep = .preview
+
+        replyContainer.setContentView(replyMessageView)
+        replyContainer.configureButtons([
+            .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
+                self?.cancelReplyFlow()
+            }),
+            .init(
+                style: .text(title: self.replySettings.sentiment.summaryTitle, symbolName: "chevron.down", isPrimary: false),
+                menu: makeSentimentMenu(),
+                showsMenuAsPrimaryAction: true
+            ),
+            .init(
+                style: .text(title: self.replySettings.tone.summaryTitle, symbolName: "chevron.down", isPrimary: false),
+                menu: makeToneMenu(),
+                showsMenuAsPrimaryAction: true
+            ),
+            .init(style: .text(title: "Generate", symbolName: "sparkles", isPrimary: true), action: { [weak self] in
+                self?.generateReply()
+            })
+        ])
+    }
+
+    private func makeSentimentMenu() -> UIMenu {
+        let actions = ReplySentimentOption.allCases.map { option in
+            UIAction(title: option.menuTitle, state: option == replySettings.sentiment ? .on : .off) { [weak self] _ in
+                self?.setReplySentiment(option)
+            }
+        }
+        return UIMenu(title: "Sentiment", options: .displayInline, children: actions)
+    }
+
+    private func makeToneMenu() -> UIMenu {
+        let actions = ReplyToneOption.allCases.map { option in
+            UIAction(title: option.menuTitle, state: option == replySettings.tone ? .on : .off) { [weak self] _ in
+                self?.setReplyTone(option)
+            }
+        }
+        return UIMenu(title: "Tone", options: .displayInline, children: actions)
+    }
+
+    private func setReplySentiment(_ option: ReplySentimentOption) {
+        replySettings.sentiment = option
+        refreshReplyButtonsForCurrentStep()
+    }
+
+    private func setReplyTone(_ option: ReplyToneOption) {
+        replySettings.tone = option
+        refreshReplyButtonsForCurrentStep()
+    }
+
+
+    private func refreshReplyButtonsForCurrentStep() {
+        switch replyCurrentStep {
+        case .preview:
+            showReplyPreview()
+        case .generated:
+            updateReplyGeneratedButtons()
+        case .empty:
+            replyContainer.configureButtons(replyInitialButtons())
+        }
+    }
+
+    private func updateReplyGeneratedButtons() {
+        // Helper to update buttons in Step 3 without regenerating
+        replyContainer.configureButtons([
+            .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
+                self?.cancelReplyFlow()
+            }),
+            .init(
+                style: .text(title: self.replySettings.sentiment.summaryTitle, symbolName: "chevron.down", isPrimary: false),
+                menu: makeSentimentMenu(),
+                showsMenuAsPrimaryAction: true
+            ),
+            .init(
+                style: .text(title: self.replySettings.tone.summaryTitle, symbolName: "chevron.down", isPrimary: false),
+                menu: makeToneMenu(),
+                showsMenuAsPrimaryAction: true
+            ),
+            .init(style: .icon(symbolName: "arrow.clockwise", accessibilityLabel: "Reload"), action: { [weak self] in
+                self?.generateReply()
+            }),
+            .init(style: .text(title: "Insert", symbolName: "arrow.up", isPrimary: true), action: { [weak self] in
+                self?.insertReply()
+            })
+        ])
+    }
+
+    private func generateReply() {
+        // Show loading state
+        replyMessageView.message = "Loading..."
+        replyCurrentStep = .generated
+        updateReplyGeneratedButtons()
+
+        // Build prompt based on settings
+        let lengthInstruction = replySettings.length.instructionText
+        let sentimentInstruction = replySettings.sentiment.instructionText
+        let toneInstruction = replySettings.tone.instructionText
+
+        let prompt = """
+        Generate a reply to the following message. \(lengthInstruction) \(sentimentInstruction) \(toneInstruction)
+
+        Message to reply to:
+        \(pastedMessage)
+
+        Reply:
+        """
+
+        // Make API request
+        let url = URL(string: "https://api.openai.com/v1/chat/completions")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(chatGPTAPIKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let requestBody: [String: Any] = [
+            "model": "gpt-4",
+            "messages": [
+                ["role": "user", "content": prompt]
+            ],
+            "max_tokens": 500
+        ]
+
+        guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            replyMessageView.message = "Error: Failed to create request"
+            return
+        }
+
+        request.httpBody = httpBody
+
+        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+
+                if let error = error {
+                    self.replyMessageView.message = "Error: \(error.localizedDescription)"
+                    NSLog("[KeyCo] Reply generation error: %@", error.localizedDescription)
+                    return
+                }
+
+                guard let data = data else {
+                    self.replyMessageView.message = "Error: No data received"
+                    return
+                }
+
+                do {
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let choices = json["choices"] as? [[String: Any]],
+                       let firstChoice = choices.first,
+                       let message = firstChoice["message"] as? [String: Any],
+                       let content = message["content"] as? String {
+                        self.replyMessageView.message = content.trimmingCharacters(in: .whitespacesAndNewlines)
+                        self.showReplyGenerated()
+                    } else {
+                        if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                           let error = json["error"] as? [String: Any],
+                           let message = error["message"] as? String {
+                            self.replyMessageView.message = "API Error: \(message)"
+                            NSLog("[KeyCo] Reply generation API error: %@", message)
+                        } else {
+                            self.replyMessageView.message = "Error: Unexpected response format"
+                        }
+                    }
+                } catch {
+                    self.replyMessageView.message = "Error: Failed to parse response"
+                    NSLog("[KeyCo] Reply generation parse error: %@", error.localizedDescription)
+                }
+            }
+        }
+
+        task.resume()
+    }
+
+    private func showReplyGenerated() {
+        // Update buttons for Step 3: show Reload and Insert
+        replyCurrentStep = .generated
+        updateReplyGeneratedButtons()
+    }
+
+    private func insertReply() {
+        let text = replyMessageView.message
+        guard !text.isEmpty, text != "Loading...", !text.hasPrefix("Error:") else { return }
+        textDocumentProxy.insertText(text)
+        resetReplyFlow()
+        switchToMode(.home, height: .small)
+    }
+}
 
 extension KeyboardViewController: WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -1251,4 +1244,3 @@ extension KeyboardViewController: WKNavigationDelegate {
         currentGoogleURL = webView.url
     }
 }
-
