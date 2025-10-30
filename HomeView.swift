@@ -11,6 +11,7 @@ struct HomeView: View {
     @State private var showingTheme = false
     @State private var showingFeedback = false
     @State private var showingSupport = false
+    @State private var showingSnippets = false
     @AppStorage("isShowingOnboardingFromHome") private var isShowingOnboardingFromHome = false
 
     var body: some View {
@@ -31,7 +32,38 @@ struct HomeView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
 
-                    // Setup Section
+                    // Two-Column Cards Section
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Get Started")
+                            .font(.caption)
+                            .textCase(.uppercase)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 8)
+
+                        HStack(spacing: 16) {
+                            // Left Card: How to use
+                            CardButton(
+                                icon: "keyboard.fill",
+                                title: "How to use",
+                                subtitle: "Setup steps"
+                            ) {
+                                showingHowToUse = true
+                            }
+                            
+                            // Right Card: Try keyboard
+                            CardButton(
+                                icon: "square.and.pencil",
+                                title: "Try keyboard",
+                                subtitle: "Test it out"
+                            ) {
+                                openKeyboard()
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+
+                    // Setup Section (keeping existing)
                     VStack(alignment: .leading, spacing: 0) {
                         Text("Setup")
                             .font(.caption)
@@ -267,6 +299,23 @@ struct HomeView: View {
             }
             .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("KeyCo")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingSnippets = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "doc.on.doc")
+                            Text("Snippets")
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(Color.accentColor)
+                    }
+                }
+            }
+            .sheet(isPresented: $showingSnippets) {
+                SnippetsManagementView()
+            }
             .onAppear {
                 checkKeyboardStatus()
                 // Restore onboarding sheet if it was showing when app went to background
@@ -332,6 +381,46 @@ struct HomeView: View {
            let rootVC = window.rootViewController {
             rootVC.present(activityVC, animated: true)
         }
+    }
+    
+    private func openKeyboard() {
+        // Opens the keyboard settings where user can enable the keyboard
+        if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(settingsURL)
+        }
+    }
+}
+
+struct CardButton: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 8) {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .foregroundStyle(Color.accentColor)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundStyle(Color(uiColor: .label))
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(Color(uiColor: .secondaryLabel))
+                }
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 

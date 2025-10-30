@@ -18,8 +18,14 @@ final class SnippetsStore {
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
-    init(userDefaults: UserDefaults = .standard) {
-        self.userDefaults = userDefaults
+    init(userDefaults: UserDefaults? = nil) {
+        // Use App Group for shared storage between host app and extension
+        if let appGroupDefaults = UserDefaults(suiteName: "group.com.keyco") {
+            self.userDefaults = appGroupDefaults
+        } else {
+            // Fallback to standard UserDefaults if App Group not configured yet
+            self.userDefaults = userDefaults ?? .standard
+        }
         load()
         seedDefaultsIfNeeded()
     }
