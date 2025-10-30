@@ -66,12 +66,12 @@ final class SnippetsContentView: UIView {
 
         NSLayoutConstraint.activate([
             headerLabel.topAnchor.constraint(equalTo: topAnchor, constant: 12),
-            headerLabel.leadingAnchor.constraint(equalTo: leadingAnchor),
-            headerLabel.trailingAnchor.constraint(equalTo: trailingAnchor),
+            headerLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
+            headerLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
 
             tableView.topAnchor.constraint(equalTo: headerLabel.bottomAnchor, constant: 6),
-            tableView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            tableView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
+            tableView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
             tableView.bottomAnchor.constraint(equalTo: bottomAnchor),
 
             emptyLabel.centerXAnchor.constraint(equalTo: centerXAnchor),

@@ -119,8 +119,8 @@ final class ActionContainerView: UIView {
             backgroundView.trailingAnchor.constraint(equalTo: trailingAnchor),
             backgroundView.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            toggleButton.topAnchor.constraint(equalTo: backgroundView.topAnchor, constant: 6),
-            toggleButton.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor, constant: -6),
+            toggleButton.topAnchor.constraint(equalTo: backgroundView.topAnchor, constant: 4),
+            toggleButton.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor, constant: -4),
             toggleButton.widthAnchor.constraint(equalToConstant: 30),
             toggleButton.heightAnchor.constraint(equalToConstant: 30)
         ])
