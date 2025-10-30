@@ -69,7 +69,7 @@ final class SnippetsContentView: UIView {
         addSubview(emptyLabel)
 
         NSLayoutConstraint.activate([
-            headerLabel.topAnchor.constraint(equalTo: topAnchor, constant: 12),
+            headerLabel.topAnchor.constraint(equalTo: topAnchor, constant: 16),
             headerLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
             headerLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
 
