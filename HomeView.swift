@@ -18,7 +18,7 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    // Status Section
+                    // Status Section - Centered
                     HStack(spacing: 12) {
                         Image(systemName: isKeyboardActive ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                             .font(.title3)
@@ -28,42 +28,11 @@ struct HomeView: View {
                             .font(.headline)
                             .foregroundStyle(isKeyboardActive ? .green : .orange)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity)
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
 
-                    // Two-Column Cards Section
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text("Get Started")
-                            .font(.caption)
-                            .textCase(.uppercase)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 8)
-
-                        HStack(spacing: 16) {
-                            // Left Card: How to use
-                            CardButton(
-                                icon: "keyboard.fill",
-                                title: "How to use",
-                                subtitle: "Setup steps"
-                            ) {
-                                showingHowToUse = true
-                            }
-                            
-                            // Right Card: Try keyboard
-                            CardButton(
-                                icon: "square.and.pencil",
-                                title: "Try keyboard",
-                                subtitle: "Test it out"
-                            ) {
-                                openKeyboard()
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                    }
-
-                    // Setup Section (keeping existing)
+                    // Setup Section - 2 cards side by side
                     VStack(alignment: .leading, spacing: 0) {
                         Text("Setup")
                             .font(.caption)
@@ -72,43 +41,49 @@ struct HomeView: View {
                             .padding(.horizontal, 20)
                             .padding(.bottom, 8)
 
-                        VStack(spacing: 0) {
-                            Button(action: {
-                                showingHowToUse = true
-                            }) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "keyboard.fill")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(Color(uiColor: .label))
-                                        .frame(width: 28, height: 28)
-                                        .background(Circle().fill(Color(uiColor: .secondarySystemFill)))
-                                    Text("How to use")
-                                        .foregroundStyle(Color(uiColor: .label))
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundStyle(Color(uiColor: .tertiaryLabel))
-                                }
-                                .padding(.leading, 12)
-                                .padding(.trailing, 16)
-                                .padding(.vertical, 12)
-                            }
-
-                            Divider()
-                                .padding(.leading, 52)
-
-                            Button(action: {
-                                // Reset to start of onboarding when manually opening it
+                        HStack(spacing: 16) {
+                            // Left Card: Show onboarding
+                            CardButton(
+                                icon: "questionmark.circle.fill",
+                                title: "Show onboarding",
+                                subtitle: "Learn the basics"
+                            ) {
                                 appState.currentOnboardingStep = "welcome"
                                 showingOnboarding = true
+                            }
+                            
+                            // Right Card: Test your keyboard
+                            CardButton(
+                                icon: "square.and.pencil",
+                                title: "Test keyboard",
+                                subtitle: "Try it out"
+                            ) {
+                                showingHowToUse = true
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+
+                    // Snippets Management Section
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Management")
+                            .font(.caption)
+                            .textCase(.uppercase)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 8)
+
+                        VStack(spacing: 0) {
+                            Button(action: {
+                                showingSnippets = true
                             }) {
                                 HStack(spacing: 12) {
-                                    Image(systemName: "questionmark.circle.fill")
+                                    Image(systemName: "doc.on.doc")
                                         .font(.system(size: 12))
                                         .foregroundStyle(Color(uiColor: .label))
                                         .frame(width: 28, height: 28)
                                         .background(Circle().fill(Color(uiColor: .secondarySystemFill)))
-                                    Text("Show onboarding")
+                                    Text("Manage Snippets")
                                         .foregroundStyle(Color(uiColor: .label))
                                     Spacer()
                                     Image(systemName: "chevron.right")
