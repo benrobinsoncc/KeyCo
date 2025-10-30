@@ -11,6 +11,7 @@ class KeyboardViewController: UIInputViewController {
         case write
         case google
         case chatgpt
+        case snippets
     }
 
     private enum KeyboardHeight: CGFloat {
@@ -30,10 +31,12 @@ class KeyboardViewController: UIInputViewController {
     private var writeView: UIView!
     private var googleView: UIView!
     private var chatgptView: UIView!
+    private var snippetsView: UIView!
 
     private var writeContainer: ActionContainerView!
     private var googleContainer: ActionContainerView!
     private var chatgptContainer: ActionContainerView!
+    private var snippetsContainer: ActionContainerView!
     private var googleWebView: WKWebView?
     private var currentGoogleURL: URL?
 
@@ -50,6 +53,7 @@ class KeyboardViewController: UIInputViewController {
 
     // ChatGPT content view
     private var chatgptContentView: ResponseContentView!
+    private var snippetsContentView: SnippetsContentView!
 
     private let containerMargin: CGFloat = 3
     private let cornerRadius: CGFloat = 20
@@ -147,6 +151,7 @@ class KeyboardViewController: UIInputViewController {
         setupWriteView()
         setupGoogleView()
         setupChatGPTView()
+        setupSnippetsView()
 
         // Show initial mode
         updateModeVisibility()
@@ -200,52 +205,53 @@ class KeyboardViewController: UIInputViewController {
             homeView.bottomAnchor.constraint(equalTo: contentArea.bottomAnchor)
         ])
 
-        // Create 2x2 grid of buttons
+        // Create 2x2 grid of buttons (Write/Snippets on top, Google/ChatGPT bottom)
         let spacing: CGFloat = 8
         let padding: CGFloat = 3
 
-        // Write button (spans both top positions)
         let writeButton = createActionButton(title: "Write", color: .white)
         writeButton.addTarget(self, action: #selector(writeTapped), for: .touchUpInside)
         homeView.addSubview(writeButton)
 
-        // Google button (bottom-left)
+        let snippetsButton = createActionButton(title: "Snippets", color: .white)
+        snippetsButton.addTarget(self, action: #selector(snippetsTapped), for: .touchUpInside)
+        homeView.addSubview(snippetsButton)
+
         let googleButton = createActionButton(title: "Google", color: .white)
         googleButton.addTarget(self, action: #selector(googleTapped), for: .touchUpInside)
         homeView.addSubview(googleButton)
 
-        // ChatGPT button (bottom-right)
         let chatgptButton = createActionButton(title: "ChatGPT", color: .white)
         chatgptButton.addTarget(self, action: #selector(chatgptTapped), for: .touchUpInside)
         homeView.addSubview(chatgptButton)
 
         NSLayoutConstraint.activate([
-            // Write (spans top)
+            // Top row
             writeButton.topAnchor.constraint(equalTo: homeView.topAnchor, constant: padding),
             writeButton.leadingAnchor.constraint(equalTo: homeView.leadingAnchor, constant: padding),
-            writeButton.trailingAnchor.constraint(equalTo: homeView.trailingAnchor, constant: -padding),
+            snippetsButton.topAnchor.constraint(equalTo: homeView.topAnchor, constant: padding),
+            snippetsButton.trailingAnchor.constraint(equalTo: homeView.trailingAnchor, constant: -padding),
+            snippetsButton.leadingAnchor.constraint(equalTo: writeButton.trailingAnchor, constant: spacing),
 
-            // Google (bottom-left)
+            // Bottom row
             googleButton.bottomAnchor.constraint(equalTo: homeView.bottomAnchor, constant: -padding),
             googleButton.leadingAnchor.constraint(equalTo: homeView.leadingAnchor, constant: padding),
-
-            // ChatGPT (bottom-right)
             chatgptButton.bottomAnchor.constraint(equalTo: homeView.bottomAnchor, constant: -padding),
             chatgptButton.trailingAnchor.constraint(equalTo: homeView.trailingAnchor, constant: -padding),
-
-            // Horizontal spacing between Google and ChatGPT
             chatgptButton.leadingAnchor.constraint(equalTo: googleButton.trailingAnchor, constant: spacing),
 
-            // Vertical spacing
+            // Vertical spacing between rows
             googleButton.topAnchor.constraint(equalTo: writeButton.bottomAnchor, constant: spacing),
-            chatgptButton.topAnchor.constraint(equalTo: writeButton.bottomAnchor, constant: spacing)
+            chatgptButton.topAnchor.constraint(equalTo: snippetsButton.bottomAnchor, constant: spacing)
         ])
 
-        // Equal sizing for bottom buttons
+        // Equal sizing
+        writeButton.widthAnchor.constraint(equalTo: snippetsButton.widthAnchor).isActive = true
         googleButton.widthAnchor.constraint(equalTo: chatgptButton.widthAnchor).isActive = true
+        writeButton.heightAnchor.constraint(equalTo: writeButton.widthAnchor).isActive = true
+        snippetsButton.heightAnchor.constraint(equalTo: snippetsButton.widthAnchor).isActive = true
         googleButton.heightAnchor.constraint(equalTo: googleButton.widthAnchor).isActive = true
         chatgptButton.heightAnchor.constraint(equalTo: chatgptButton.widthAnchor).isActive = true
-        googleButton.heightAnchor.constraint(equalTo: chatgptButton.heightAnchor).isActive = true
     }
 
     private func createActionButton(title: String, color: UIColor) -> UIButton {
@@ -462,6 +468,122 @@ class KeyboardViewController: UIInputViewController {
         pinContainer(chatgptContainer, to: chatgptView)
     }
 
+    private func setupSnippetsView() {
+        snippetsView = UIView()
+        snippetsView.backgroundColor = .clear
+        snippetsView.translatesAutoresizingMaskIntoConstraints = false
+        contentArea.addSubview(snippetsView)
+
+        NSLayoutConstraint.activate([
+            snippetsView.topAnchor.constraint(equalTo: contentArea.topAnchor),
+            snippetsView.leadingAnchor.constraint(equalTo: contentArea.leadingAnchor),
+            snippetsView.trailingAnchor.constraint(equalTo: contentArea.trailingAnchor),
+            snippetsView.bottomAnchor.constraint(equalTo: contentArea.bottomAnchor)
+        ])
+
+        let content = SnippetsContentView()
+        content.translatesAutoresizingMaskIntoConstraints = false
+        content.onInsert = { [weak self] snippet in
+            self?.insertSnippet(snippet)
+        }
+        content.onCopy = { [weak self] snippet in
+            UIPasteboard.general.string = snippet.text
+            self?.markSnippetUsed(snippet)
+        }
+        content.onAdd = { [weak self] in
+            self?.presentAddSnippet()
+        }
+        content.onRename = { [weak self] snippet in
+            self?.presentRename(snippet)
+        }
+        content.onDelete = { [weak self] snippet in
+            self?.presentDelete(snippet)
+        }
+        content.onTogglePin = { [weak self] snippet in
+            SnippetsStore.shared.togglePin(id: snippet.id)
+            self?.snippetsContentView.reloadData()
+        }
+        snippetsContentView = content
+
+        snippetsContainer = createActionContainer(
+            title: nil,
+            contentView: content,
+            buttonConfigs: [
+                .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
+                    self?.switchToMode(.home, height: .small)
+                }),
+                .init(style: .text(title: "Add", symbolName: "plus", isPrimary: false), action: { [weak self] in
+                    self?.presentAddSnippet()
+                }),
+                .init(style: .spacer),
+                .init(style: .text(title: "Done", symbolName: nil, isPrimary: true), action: { [weak self] in
+                    self?.switchToMode(.home, height: .small)
+                })
+            ],
+            showsToggle: true,
+            contentInsets: UIEdgeInsets(top: 0, left: 12, bottom: 12, right: 12)
+        )
+        snippetsView.addSubview(snippetsContainer)
+        pinContainer(snippetsContainer, to: snippetsView)
+    }
+
+    // MARK: - Snippets Actions
+    private func presentAddSnippet() {
+        let alert = UIAlertController(title: "New Snippet", message: nil, preferredStyle: .alert)
+        alert.addTextField { tf in
+            tf.placeholder = "Title"
+        }
+        alert.addTextField { tf in
+            tf.placeholder = "Text"
+        }
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Add", style: .default, handler: { [weak self] _ in
+            guard let self = self else { return }
+            let title = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let text = alert.textFields?.last?.text ?? ""
+            guard !title.isEmpty, !text.isEmpty else { return }
+            _ = SnippetsStore.shared.add(title: title, text: text)
+            self.snippetsContentView.reloadData()
+        }))
+        present(alert, animated: true)
+    }
+
+    private func presentRename(_ snippet: Snippet) {
+        let alert = UIAlertController(title: "Rename Snippet", message: nil, preferredStyle: .alert)
+        alert.addTextField { tf in
+            tf.placeholder = "Title"
+            tf.text = snippet.title
+        }
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Save", style: .default, handler: { [weak self] _ in
+            guard let newTitle = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines), !newTitle.isEmpty else { return }
+            SnippetsStore.shared.rename(id: snippet.id, newTitle: newTitle)
+            self?.snippetsContentView.reloadData()
+        }))
+        present(alert, animated: true)
+    }
+
+    private func presentDelete(_ snippet: Snippet) {
+        let alert = UIAlertController(title: "Delete Snippet", message: "This cannot be undone.", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Delete", style: .destructive, handler: { [weak self] _ in
+            SnippetsStore.shared.delete(id: snippet.id)
+            self?.snippetsContentView.reloadData()
+        }))
+        present(alert, animated: true)
+    }
+
+    private func insertSnippet(_ snippet: Snippet) {
+        // Simple insertion; could add heuristics for newlines if desired
+        textDocumentProxy.insertText(snippet.text)
+        markSnippetUsed(snippet)
+    }
+
+    private func markSnippetUsed(_ snippet: Snippet) {
+        SnippetsStore.shared.markUsed(id: snippet.id)
+        snippetsContentView.reloadData()
+    }
+
     // MARK: - Actions
 
     @objc private func writeTapped() {
@@ -481,6 +603,13 @@ class KeyboardViewController: UIInputViewController {
     @objc private func chatgptTapped() {
         switchToMode(.chatgpt, height: .small)
         queryChatGPT()
+    }
+
+    @objc private func snippetsTapped() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        switchToMode(.snippets, height: .small)
+        // Ensure latest data
+        snippetsContentView?.reloadData()
     }
 
     // MARK: - Mode Management
@@ -522,6 +651,7 @@ class KeyboardViewController: UIInputViewController {
         writeView.alpha = 0
         googleView.alpha = 0
         chatgptView.alpha = 0
+        snippetsView.alpha = 0
 
         // Show current mode view
         switch currentMode {
@@ -533,6 +663,8 @@ class KeyboardViewController: UIInputViewController {
             googleView.alpha = 1
         case .chatgpt:
             chatgptView.alpha = 1
+        case .snippets:
+            snippetsView.alpha = 1
         }
     }
 
@@ -541,6 +673,7 @@ class KeyboardViewController: UIInputViewController {
         writeContainer?.setExpanded(isExpanded)
         googleContainer?.setExpanded(isExpanded)
         chatgptContainer?.setExpanded(isExpanded)
+        snippetsContainer?.setExpanded(isExpanded)
     }
 
     private func updateHeight(animated: Bool) {
@@ -577,6 +710,7 @@ class KeyboardViewController: UIInputViewController {
         case .write: modeValue = 1
         case .google: modeValue = 2
         case .chatgpt: modeValue = 3
+        case .snippets: modeValue = 4
         }
         defaults.set(modeValue, forKey: "KeyCo_currentMode")
         defaults.set(currentHeight.rawValue, forKey: "KeyCo_currentHeight")
@@ -594,6 +728,7 @@ class KeyboardViewController: UIInputViewController {
             case 1: currentMode = .write
             case 2: currentMode = .google
             case 3: currentMode = .chatgpt
+            case 4: currentMode = .snippets
             default: currentMode = .home
             }
         }
