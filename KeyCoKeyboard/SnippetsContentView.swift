@@ -102,6 +102,7 @@ extension SnippetsContentView: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         let item = allSnippets[indexPath.row]
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
         onInsert?(item)
     }
 }
@@ -161,23 +162,40 @@ private final class Cell: UITableViewCell {
             v.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10)
         ])
 
-        let interaction = UIContextMenuInteraction(delegate: self)
-        contentView.addInteraction(interaction)
+        // No context menu; host app will manage snippet actions
     }
 
     @objc private func insertTapped() { onInsert?() }
     @objc private func copyTapped() { onCopy?() }
 }
 
-extension Cell: UIContextMenuInteractionDelegate {
-    func contextMenuInteraction(_ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint) -> UIContextMenuConfiguration? {
-        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
-            guard let self = self else { return nil }
-            return UIMenu(children: [
-                UIAction(title: "Insert", image: UIImage(systemName: "arrow.up")) { _ in self.onInsert?() },
-                UIAction(title: "Rename", image: UIImage(systemName: "pencil")) { _ in self.onRename?() },
-                UIAction(title: "Delete", image: UIImage(systemName: "trash"), attributes: .destructive) { _ in self.onDelete?() }
-            ])
+// Subtle press state similar to action bar: reduce text opacity when highlighted/selected
+extension Cell {
+    override open func setHighlighted(_ highlighted: Bool, animated: Bool) {
+        super.setHighlighted(highlighted, animated: animated)
+        let alpha: CGFloat = highlighted ? 0.6 : 1.0
+        if animated {
+            UIView.animate(withDuration: 0.15) {
+                self.titleLabel.alpha = alpha
+                self.previewLabel.alpha = alpha
+            }
+        } else {
+            titleLabel.alpha = alpha
+            previewLabel.alpha = alpha
+        }
+    }
+
+    override open func setSelected(_ selected: Bool, animated: Bool) {
+        super.setSelected(selected, animated: animated)
+        let alpha: CGFloat = selected ? 0.6 : 1.0
+        if animated {
+            UIView.animate(withDuration: 0.15) {
+                self.titleLabel.alpha = alpha
+                self.previewLabel.alpha = alpha
+            }
+        } else {
+            titleLabel.alpha = alpha
+            previewLabel.alpha = alpha
         }
     }
 }
