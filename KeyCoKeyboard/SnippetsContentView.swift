@@ -48,7 +48,7 @@ final class SnippetsContentView: UIView {
         tableView.register(Cell.self, forCellReuseIdentifier: Cell.reuseId)
         tableView.dataSource = self
         tableView.delegate = self
-        tableView.separatorInset = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
+        tableView.separatorInset = .zero
         tableView.separatorInsetReference = .fromCellEdges
         tableView.scrollIndicatorInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
         tableView.verticalScrollIndicatorInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
@@ -165,7 +165,7 @@ private final class Cell: UITableViewCell {
 
         preservesSuperviewLayoutMargins = false
         layoutMargins = .zero
-        separatorInset = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
+        separatorInset = .zero
 
         // No context menu; host app will manage snippet actions
     }
