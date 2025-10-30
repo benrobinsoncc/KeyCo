@@ -158,8 +158,8 @@ private final class Cell: UITableViewCell {
         contentView.addSubview(v)
         NSLayoutConstraint.activate([
             v.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
-            v.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 12),
-            v.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -12),
+            v.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 0),
+            v.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: 0),
             v.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10)
         ])
 
