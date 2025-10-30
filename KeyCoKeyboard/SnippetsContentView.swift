@@ -171,7 +171,7 @@ private final class Cell: UITableViewCell {
 
 // Subtle press state similar to action bar: reduce text opacity when highlighted/selected
 extension Cell {
-    override open func setHighlighted(_ highlighted: Bool, animated: Bool) {
+    override func setHighlighted(_ highlighted: Bool, animated: Bool) {
         super.setHighlighted(highlighted, animated: animated)
         let alpha: CGFloat = highlighted ? 0.6 : 1.0
         if animated {
@@ -185,7 +185,7 @@ extension Cell {
         }
     }
 
-    override open func setSelected(_ selected: Bool, animated: Bool) {
+    override func setSelected(_ selected: Bool, animated: Bool) {
         super.setSelected(selected, animated: animated)
         let alpha: CGFloat = selected ? 0.6 : 1.0
         if animated {
