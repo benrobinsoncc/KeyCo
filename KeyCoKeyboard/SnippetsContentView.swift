@@ -49,10 +49,10 @@ final class SnippetsContentView: UIView {
         tableView.dataSource = self
         tableView.delegate = self
         tableView.separatorInset = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
-        tableView.separatorInsetReference = .fromAutomaticInsets
+        tableView.separatorInsetReference = .fromCellEdges
         tableView.scrollIndicatorInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
         tableView.verticalScrollIndicatorInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
-        tableView.layoutMargins = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
+        tableView.layoutMargins = .zero
         tableView.keyboardDismissMode = .onDrag
         addSubview(tableView)
 
@@ -158,13 +158,13 @@ private final class Cell: UITableViewCell {
         contentView.addSubview(v)
         NSLayoutConstraint.activate([
             v.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
-            v.leadingAnchor.constraint(equalTo: contentView.layoutMarginsGuide.leadingAnchor),
-            v.trailingAnchor.constraint(equalTo: contentView.layoutMarginsGuide.trailingAnchor),
+            v.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 12),
+            v.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -12),
             v.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10)
         ])
 
         preservesSuperviewLayoutMargins = false
-        layoutMargins = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
+        layoutMargins = .zero
         separatorInset = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
 
         // No context menu; host app will manage snippet actions
