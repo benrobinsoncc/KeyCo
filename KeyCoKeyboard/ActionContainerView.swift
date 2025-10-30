@@ -6,6 +6,9 @@ final class ActionContainerView: UIView {
 
     // MARK: - Nested Types
 
+    // Shared haptic generator for better performance
+    private static let sharedHapticGenerator = UIImpactFeedbackGenerator(style: .light)
+    
     struct ActionButtonConfiguration {
         enum DisplayStyle {
             case icon(symbolName: String, accessibilityLabel: String)
@@ -119,8 +122,8 @@ final class ActionContainerView: UIView {
             backgroundView.trailingAnchor.constraint(equalTo: trailingAnchor),
             backgroundView.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            toggleButton.topAnchor.constraint(equalTo: backgroundView.topAnchor, constant: 4),
-            toggleButton.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor, constant: -4),
+            toggleButton.topAnchor.constraint(equalTo: backgroundView.topAnchor, constant: 3),
+            toggleButton.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor, constant: -3),
             toggleButton.widthAnchor.constraint(equalToConstant: 30),
             toggleButton.heightAnchor.constraint(equalToConstant: 30)
         ])
@@ -350,13 +353,13 @@ final class ActionContainerView: UIView {
     // MARK: - Actions
 
     @objc private func toggleTapped() {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        Self.sharedHapticGenerator.impactOccurred()
         onToggle?()
     }
 
     @objc private func actionButtonTapped(_ sender: UIButton) {
         guard let action = buttonActions[sender] else { return }
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        Self.sharedHapticGenerator.impactOccurred()
         action()
     }
 

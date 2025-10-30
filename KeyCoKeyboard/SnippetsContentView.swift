@@ -2,6 +2,10 @@ import UIKit
 
 final class SnippetsContentView: UIView {
     // MARK: - Public callbacks
+    
+    // Shared haptic generator for better performance
+    private static let sharedHapticGenerator = UIImpactFeedbackGenerator(style: .light)
+    
     var onInsert: ((Snippet) -> Void)?
     var onCopy: ((Snippet) -> Void)?
     var onAdd: (() -> Void)?
@@ -103,7 +107,7 @@ extension SnippetsContentView: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         let item = allSnippets[indexPath.row]
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        Self.sharedHapticGenerator.impactOccurred()
         onInsert?(item)
     }
 }
