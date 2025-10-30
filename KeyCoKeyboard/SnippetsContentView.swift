@@ -10,13 +10,12 @@ final class SnippetsContentView: UIView {
     var onTogglePin: ((Snippet) -> Void)?
 
     // MARK: - UI
-    private let searchField = UISearchBar()
+    private let headerLabel = UILabel()
     private let tableView = UITableView(frame: .zero, style: .plain)
     private let emptyLabel = UILabel()
 
     // MARK: - Data
     private var allSnippets: [Snippet] = []
-    private var filteredSnippets: [Snippet] = []
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -31,22 +30,19 @@ final class SnippetsContentView: UIView {
     // MARK: - Public
     func reloadData() {
         allSnippets = SnippetsStore.shared.getAll()
-        applyFilter()
-    }
-
-    func focusSearch() {
-        searchField.becomeFirstResponder()
+        emptyLabel.isHidden = !allSnippets.isEmpty
+        tableView.reloadData()
     }
 
     // MARK: - Setup
     private func setup() {
         backgroundColor = .clear
 
-        searchField.placeholder = "Search snippets"
-        searchField.searchBarStyle = .minimal
-        searchField.translatesAutoresizingMaskIntoConstraints = false
-        searchField.delegate = self
-        addSubview(searchField)
+        headerLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        headerLabel.textColor = .systemGray
+        headerLabel.text = "SNIPPETS"
+        headerLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(headerLabel)
 
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.register(Cell.self, forCellReuseIdentifier: Cell.reuseId)
@@ -65,11 +61,11 @@ final class SnippetsContentView: UIView {
         addSubview(emptyLabel)
 
         NSLayoutConstraint.activate([
-            searchField.topAnchor.constraint(equalTo: topAnchor),
-            searchField.leadingAnchor.constraint(equalTo: leadingAnchor),
-            searchField.trailingAnchor.constraint(equalTo: trailingAnchor),
+            headerLabel.topAnchor.constraint(equalTo: topAnchor, constant: 12),
+            headerLabel.leadingAnchor.constraint(equalTo: leadingAnchor),
+            headerLabel.trailingAnchor.constraint(equalTo: trailingAnchor),
 
-            tableView.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 4),
+            tableView.topAnchor.constraint(equalTo: headerLabel.bottomAnchor, constant: 6),
             tableView.leadingAnchor.constraint(equalTo: leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: bottomAnchor),
@@ -79,47 +75,31 @@ final class SnippetsContentView: UIView {
         ])
     }
 
-    private func applyFilter() {
-        let q = searchField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if q.isEmpty {
-            filteredSnippets = allSnippets
-        } else {
-            filteredSnippets = SnippetsStore.shared.search(q)
-        }
-        emptyLabel.isHidden = !filteredSnippets.isEmpty
-        tableView.reloadData()
-    }
+    // No search; table shows all snippets
 }
 
 // MARK: - Table
 extension SnippetsContentView: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return filteredSnippets.count
+        return allSnippets.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: Cell.reuseId, for: indexPath) as! Cell
-        let item = filteredSnippets[indexPath.row]
+        let item = allSnippets[indexPath.row]
         cell.configure(with: item)
         cell.onInsert = { [weak self] in self?.onInsert?(item) }
         cell.onCopy = { [weak self] in self?.onCopy?(item) }
         cell.onRename = { [weak self] in self?.onRename?(item) }
         cell.onDelete = { [weak self] in self?.onDelete?(item) }
-        cell.onTogglePin = { [weak self] in self?.onTogglePin?(item) }
+        // Pinning removed
         return cell
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        let item = filteredSnippets[indexPath.row]
+        let item = allSnippets[indexPath.row]
         onInsert?(item)
-    }
-}
-
-// MARK: - Search
-extension SnippetsContentView: UISearchBarDelegate {
-    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-        applyFilter()
     }
 }
 
@@ -129,15 +109,13 @@ private final class Cell: UITableViewCell {
 
     let titleLabel = UILabel()
     let previewLabel = UILabel()
-    let pinButton = UIButton(type: .system)
     let insertButton = UIButton(type: .system)
-    let copyButton = UIButton(type: .system)
 
     var onInsert: (() -> Void)?
     var onCopy: (() -> Void)?
     var onRename: (() -> Void)?
     var onDelete: (() -> Void)?
-    var onTogglePin: (() -> Void)?
+    // Pin removed
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -151,7 +129,6 @@ private final class Cell: UITableViewCell {
         titleLabel.text = item.title
         previewLabel.text = item.text.replacingOccurrences(of: "\n", with: " ")
         previewLabel.textColor = .secondaryLabel
-        pinButton.setImage(UIImage(systemName: item.pinned ? "pin.fill" : "pin"), for: .normal)
         accessibilityHint = "Double-tap to insert"
     }
 
@@ -161,28 +138,33 @@ private final class Cell: UITableViewCell {
         previewLabel.font = .systemFont(ofSize: 13, weight: .regular)
         previewLabel.numberOfLines = 1
 
-        pinButton.tintColor = .label
-        pinButton.addTarget(self, action: #selector(pinTapped), for: .touchUpInside)
-
-        insertButton.setTitle("Insert", for: .normal)
-        insertButton.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+        // Circular grey insert button with arrow icon
+        insertButton.backgroundColor = UIColor { trait in
+            trait.userInterfaceStyle == .dark ? UIColor.tertiarySystemBackground : UIColor.secondarySystemBackground
+        }
+        insertButton.tintColor = .label
+        insertButton.setImage(UIImage(systemName: "arrow.up"), for: .normal)
+        insertButton.translatesAutoresizingMaskIntoConstraints = false
+        insertButton.layer.cornerRadius = 16
+        insertButton.layer.cornerCurve = .continuous
+        insertButton.widthAnchor.constraint(equalToConstant: 32).isActive = true
+        insertButton.heightAnchor.constraint(equalToConstant: 32).isActive = true
         insertButton.addTarget(self, action: #selector(insertTapped), for: .touchUpInside)
 
-        copyButton.setTitle("Copy", for: .normal)
-        copyButton.titleLabel?.font = .systemFont(ofSize: 13, weight: .medium)
-        copyButton.addTarget(self, action: #selector(copyTapped), for: .touchUpInside)
-
-        let titleStack = UIStackView(arrangedSubviews: [titleLabel, UIView() , pinButton])
+        let titleStack = UIStackView(arrangedSubviews: [titleLabel, UIView()])
         titleStack.axis = .horizontal
         titleStack.alignment = .center
         titleStack.spacing = 8
 
-        let actionStack = UIStackView(arrangedSubviews: [insertButton, copyButton])
-        actionStack.axis = .horizontal
-        actionStack.alignment = .center
-        actionStack.spacing = 12
+        let rowStack = UIStackView()
+        rowStack.axis = .horizontal
+        rowStack.alignment = .center
+        rowStack.spacing = 8
+        rowStack.addArrangedSubview(titleStack)
+        rowStack.addArrangedSubview(UIView()) // spacer
+        rowStack.addArrangedSubview(insertButton)
 
-        let v = UIStackView(arrangedSubviews: [titleStack, previewLabel, actionStack])
+        let v = UIStackView(arrangedSubviews: [rowStack, previewLabel])
         v.axis = .vertical
         v.alignment = .fill
         v.spacing = 4
@@ -191,8 +173,8 @@ private final class Cell: UITableViewCell {
         contentView.addSubview(v)
         NSLayoutConstraint.activate([
             v.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
-            v.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            v.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            v.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            v.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             v.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10)
         ])
 
@@ -202,7 +184,6 @@ private final class Cell: UITableViewCell {
 
     @objc private func insertTapped() { onInsert?() }
     @objc private func copyTapped() { onCopy?() }
-    @objc private func pinTapped() { onTogglePin?() }
 }
 
 extension Cell: UIContextMenuInteractionDelegate {
@@ -211,7 +192,6 @@ extension Cell: UIContextMenuInteractionDelegate {
             guard let self = self else { return nil }
             return UIMenu(children: [
                 UIAction(title: "Insert", image: UIImage(systemName: "arrow.up")) { _ in self.onInsert?() },
-                UIAction(title: "Copy", image: UIImage(systemName: "doc.on.doc")) { _ in self.onCopy?() },
                 UIAction(title: "Rename", image: UIImage(systemName: "pencil")) { _ in self.onRename?() },
                 UIAction(title: "Delete", image: UIImage(systemName: "trash"), attributes: .destructive) { _ in self.onDelete?() }
             ])

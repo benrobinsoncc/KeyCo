@@ -27,7 +27,8 @@ final class SnippetsStore {
     // MARK: - Public API
 
     func getAll() -> [Snippet] {
-        return sorted(cache)
+        // Preserve insertion order; no automatic resorting
+        return cache
     }
 
     func search(_ query: String) -> [Snippet] {
@@ -39,7 +40,7 @@ final class SnippetsStore {
 
     @discardableResult
     func add(title: String, text: String, pinned: Bool = false) -> Snippet {
-        let item = Snippet(id: UUID(), title: title, text: text, pinned: pinned, lastUsed: Date())
+        let item = Snippet(id: UUID(), title: title, text: text, pinned: pinned, lastUsed: nil)
         cache.append(item)
         persist()
         return item
@@ -68,11 +69,7 @@ final class SnippetsStore {
         persist()
     }
 
-    func markUsed(id: UUID) {
-        guard let index = cache.firstIndex(where: { $0.id == id }) else { return }
-        cache[index].lastUsed = Date()
-        persist()
-    }
+    func markUsed(id: UUID) { /* intentionally no-op to keep ordering stable */ }
 
     // MARK: - Private
 
@@ -103,7 +100,7 @@ final class SnippetsStore {
         guard cache.isEmpty else { return }
         var seeded: [Snippet] = []
         func make(_ title: String, _ text: String, _ pinned: Bool = false) {
-            seeded.append(Snippet(id: UUID(), title: title, text: text, pinned: pinned, lastUsed: Date()))
+            seeded.append(Snippet(id: UUID(), title: title, text: text, pinned: pinned, lastUsed: nil))
         }
 
         // Minimal helpful defaults; replace values as needed later
@@ -117,14 +114,7 @@ final class SnippetsStore {
         persist()
     }
 
-    private func sorted(_ list: [Snippet]) -> [Snippet] {
-        return list.sorted { a, b in
-            if a.pinned != b.pinned { return a.pinned && !b.pinned }
-            let ad = a.lastUsed ?? .distantPast
-            let bd = b.lastUsed ?? .distantPast
-            return ad > bd
-        }
-    }
+    // No sorting; maintain insertion order
 }
 
 

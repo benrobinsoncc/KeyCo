@@ -499,10 +499,7 @@ class KeyboardViewController: UIInputViewController {
         content.onDelete = { [weak self] snippet in
             self?.presentDelete(snippet)
         }
-        content.onTogglePin = { [weak self] snippet in
-            SnippetsStore.shared.togglePin(id: snippet.id)
-            self?.snippetsContentView.reloadData()
-        }
+        // Pinning removed
         snippetsContentView = content
 
         snippetsContainer = createActionContainer(
@@ -529,38 +526,25 @@ class KeyboardViewController: UIInputViewController {
 
     // MARK: - Snippets Actions
     private func presentAddSnippet() {
-        let alert = UIAlertController(title: "New Snippet", message: nil, preferredStyle: .alert)
-        alert.addTextField { tf in
-            tf.placeholder = "Title"
-        }
-        alert.addTextField { tf in
-            tf.placeholder = "Text"
-        }
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Add", style: .default, handler: { [weak self] _ in
-            guard let self = self else { return }
-            let title = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let text = alert.textFields?.last?.text ?? ""
-            guard !title.isEmpty, !text.isEmpty else { return }
-            _ = SnippetsStore.shared.add(title: title, text: text)
-            self.snippetsContentView.reloadData()
-        }))
-        present(alert, animated: true)
+        // Keyboard extensions should avoid presenting alerts or text fields.
+        // Use clipboard or current document text.
+        let clipboard = UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let docText = currentDocumentText()
+        let text = !clipboard.isEmpty ? clipboard : docText
+        guard !text.isEmpty else { return }
+        let titleCandidate = text.split(separator: "\n").first.map(String.init) ?? text
+        let title = String(titleCandidate.prefix(40))
+        _ = SnippetsStore.shared.add(title: title, text: text)
+        snippetsContentView.reloadData()
     }
 
     private func presentRename(_ snippet: Snippet) {
-        let alert = UIAlertController(title: "Rename Snippet", message: nil, preferredStyle: .alert)
-        alert.addTextField { tf in
-            tf.placeholder = "Title"
-            tf.text = snippet.title
-        }
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Save", style: .default, handler: { [weak self] _ in
-            guard let newTitle = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines), !newTitle.isEmpty else { return }
-            SnippetsStore.shared.rename(id: snippet.id, newTitle: newTitle)
-            self?.snippetsContentView.reloadData()
-        }))
-        present(alert, animated: true)
+        // Rename from clipboard text only
+        let candidate = UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !candidate.isEmpty else { return }
+        let newTitle = String(candidate.prefix(60))
+        SnippetsStore.shared.rename(id: snippet.id, newTitle: newTitle)
+        snippetsContentView.reloadData()
     }
 
     private func presentDelete(_ snippet: Snippet) {
@@ -576,12 +560,10 @@ class KeyboardViewController: UIInputViewController {
     private func insertSnippet(_ snippet: Snippet) {
         // Simple insertion; could add heuristics for newlines if desired
         textDocumentProxy.insertText(snippet.text)
-        markSnippetUsed(snippet)
     }
 
     private func markSnippetUsed(_ snippet: Snippet) {
-        SnippetsStore.shared.markUsed(id: snippet.id)
-        snippetsContentView.reloadData()
+        // No-op: keep ordering stable, do not resort on insert
     }
 
     // MARK: - Actions

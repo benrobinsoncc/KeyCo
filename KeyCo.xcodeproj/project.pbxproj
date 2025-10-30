@@ -14,6 +14,8 @@
 		524ADCE22EAD2A3800DE2382 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCC62EAD2A3800DE2382 /* HomeView.swift */; };
 		524ADCE32EAD2A3800DE2382 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCD32EAD2A3800DE2382 /* WelcomeView.swift */; };
 		524ADCE42EAD2A3800DE2382 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCCC2EAD2A3800DE2382 /* AppState.swift */; };
+		524ADCEE2EB3FC8000DE2382 /* SnippetsContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCEC2EB3FC8000DE2382 /* SnippetsContentView.swift */; };
+		524ADCEF2EB3FC8000DE2382 /* SnippetsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCED2EB3FC8000DE2382 /* SnippetsStore.swift */; };
 		52E5DE7A2EA94A510021BC48 /* Shimmer in Frameworks */ = {isa = PBXBuildFile; productRef = 52E5DE792EA94A510021BC48 /* Shimmer */; };
 		52E5DE7C2EA94A5D0021BC48 /* Shimmer in Frameworks */ = {isa = PBXBuildFile; productRef = 52E5DE7B2EA94A5D0021BC48 /* Shimmer */; };
 		52E5DE7F2EA969970021BC48 /* AnimateText in Frameworks */ = {isa = PBXBuildFile; productRef = 52E5DE7E2EA969970021BC48 /* AnimateText */; };
@@ -26,8 +28,8 @@
 		A5000001000000000000001 /* ActionContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5000002000000000000001 /* ActionContainerView.swift */; };
 		A6000001000000000000001 /* ResponseContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6000002000000000000001 /* ResponseContentView.swift */; };
 		A8000002000000000000001 /* FastBlurEffect.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8000001000000000000001 /* FastBlurEffect.swift */; };
-		AD000001000000000000001 /* ToneMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD000002000000000000001 /* ToneMapView.swift */; };
 		A9000001000000000000001 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9000002000000000000001 /* KeychainHelper.swift */; };
+		AD000001000000000000001 /* ToneMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD000002000000000000001 /* ToneMapView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -62,6 +64,8 @@
 		524ADCCC2EAD2A3800DE2382 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		524ADCD32EAD2A3800DE2382 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		524ADCD52EAD2A3800DE2382 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		524ADCEC2EB3FC8000DE2382 /* SnippetsContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetsContentView.swift; sourceTree = "<group>"; };
+		524ADCED2EB3FC8000DE2382 /* SnippetsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetsStore.swift; sourceTree = "<group>"; };
 		A1000002000000000000001 /* KeyCoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCoApp.swift; sourceTree = "<group>"; };
 		A1000004000000000000001 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A1000006000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -73,8 +77,8 @@
 		A5000002000000000000001 /* ActionContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionContainerView.swift; sourceTree = "<group>"; };
 		A6000002000000000000001 /* ResponseContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseContentView.swift; sourceTree = "<group>"; };
 		A8000001000000000000001 /* FastBlurEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastBlurEffect.swift; sourceTree = "<group>"; };
-		AD000002000000000000001 /* ToneMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToneMapView.swift; sourceTree = "<group>"; };
 		A9000002000000000000001 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+		AD000002000000000000001 /* ToneMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToneMapView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -115,20 +119,20 @@
 			path = Home;
 			sourceTree = "<group>";
 		};
-		524ADCCB2EAD2A3800DE2382 /* Managers */ = {
+		524ADCCB2EAD2A3800DE2382 = {
 			isa = PBXGroup;
 			children = (
 			);
 			sourceTree = "<group>";
 		};
-		524ADCCD2EAD2A3800DE2382 /* Models */ = {
+		524ADCCD2EAD2A3800DE2382 = {
 			isa = PBXGroup;
 			children = (
 				524ADCCC2EAD2A3800DE2382 /* AppState.swift */,
 			);
 			sourceTree = "<group>";
 		};
-		524ADCD42EAD2A3800DE2382 /* Onboarding */ = {
+		524ADCD42EAD2A3800DE2382 = {
 			isa = PBXGroup;
 			children = (
 				524ADCD32EAD2A3800DE2382 /* WelcomeView.swift */,
@@ -141,9 +145,9 @@
 				524ADCC22EAD2A3800DE2382 /* AppDelegate.swift */,
 				524ADCC52EAD2A3800DE2382 /* Components */,
 				524ADCC72EAD2A3800DE2382 /* Home */,
-				524ADCCB2EAD2A3800DE2382 /* Managers */,
-				524ADCCD2EAD2A3800DE2382 /* Models */,
-				524ADCD42EAD2A3800DE2382 /* Onboarding */,
+				524ADCCB2EAD2A3800DE2382,
+				524ADCCD2EAD2A3800DE2382,
+				524ADCD42EAD2A3800DE2382,
 				524ADCD52EAD2A3800DE2382 /* SceneDelegate.swift */,
 				A1000022000000000000001 /* KeyCo */,
 				A1000023000000000000001 /* KeyCoKeyboard */,
@@ -165,6 +169,8 @@
 		A1000023000000000000001 /* KeyCoKeyboard */ = {
 			isa = PBXGroup;
 			children = (
+				524ADCEC2EB3FC8000DE2382 /* SnippetsContentView.swift */,
+				524ADCED2EB3FC8000DE2382 /* SnippetsStore.swift */,
 				A5000002000000000000001 /* ActionContainerView.swift */,
 				A1000010000000000000001 /* KeyboardViewController.swift */,
 				A9000002000000000000001 /* KeychainHelper.swift */,
@@ -323,6 +329,8 @@
 				A6000001000000000000001 /* ResponseContentView.swift in Sources */,
 				AD000001000000000000001 /* ToneMapView.swift in Sources */,
 				A8000002000000000000001 /* FastBlurEffect.swift in Sources */,
+				524ADCEE2EB3FC8000DE2382 /* SnippetsContentView.swift in Sources */,
+				524ADCEF2EB3FC8000DE2382 /* SnippetsStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
