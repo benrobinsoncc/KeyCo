@@ -48,6 +48,8 @@ final class ResponseContentView: UIView {
         titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         titleLabel.textColor = .systemGray
         titleLabel.numberOfLines = 1
+        // Align text to top of label by removing baseline padding
+        titleLabel.baselineAdjustment = .alignBaselines
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(titleLabel)
 
@@ -68,21 +70,21 @@ final class ResponseContentView: UIView {
         guard let hostingView = hostingController?.view else { return }
 
         NSLayoutConstraint.activate([
-            // Title label at the top with padding
-            titleLabel.topAnchor.constraint(equalTo: topAnchor),
-            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
-            titleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
+            // Title label at the very top - offset up by ~3pt to compensate for UILabel's text baseline padding
+            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: -3),
+            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor),
+            titleLabel.trailingAnchor.constraint(equalTo: trailingAnchor),
 
-            // Response container below title
-            responseContainer.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            // Response container directly below title - add back the offset so spacing is correct
+            responseContainer.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 3),
             responseContainer.leadingAnchor.constraint(equalTo: leadingAnchor),
             responseContainer.trailingAnchor.constraint(equalTo: trailingAnchor),
             responseContainer.bottomAnchor.constraint(equalTo: bottomAnchor),
 
             // SwiftUI hosting view fills the container
             hostingView.topAnchor.constraint(equalTo: responseContainer.topAnchor),
-            hostingView.leadingAnchor.constraint(equalTo: responseContainer.leadingAnchor, constant: 4),
-            hostingView.trailingAnchor.constraint(equalTo: responseContainer.trailingAnchor, constant: -4),
+            hostingView.leadingAnchor.constraint(equalTo: responseContainer.leadingAnchor),
+            hostingView.trailingAnchor.constraint(equalTo: responseContainer.trailingAnchor),
             hostingView.bottomAnchor.constraint(equalTo: responseContainer.bottomAnchor)
         ])
     }

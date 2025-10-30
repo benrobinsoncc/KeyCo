@@ -242,6 +242,17 @@ final class ActionContainerView: UIView {
         dividerView.isHidden = hidden
         dividerView.alpha = hidden ? 0 : 1
         
+        // Update content container bottom constraint
+        contentBottomConstraint.isActive = false
+        if hidden {
+            // When divider is hidden, content container bottom connects directly to bottom bar
+            contentBottomConstraint = contentContainer.bottomAnchor.constraint(equalTo: bottomBar.topAnchor)
+        } else {
+            // When divider is visible, content container bottom is above divider
+            contentBottomConstraint = contentContainer.bottomAnchor.constraint(equalTo: dividerView.topAnchor, constant: -dividerSpacing)
+        }
+        contentBottomConstraint.isActive = true
+        
         // Update bottom bar constraint - connect to divider or directly to content
         bottomBarTopConstraint.isActive = false
         if hidden {
