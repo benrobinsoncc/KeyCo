@@ -35,7 +35,8 @@ final class SnippetsStore {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return getAll() }
         let lower = trimmed.lowercased()
-        return sorted(cache.filter { $0.title.lowercased().contains(lower) || $0.text.lowercased().contains(lower) })
+        // Preserve original order; no sorting
+        return cache.filter { $0.title.lowercased().contains(lower) || $0.text.lowercased().contains(lower) }
     }
 
     @discardableResult

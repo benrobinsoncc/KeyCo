@@ -40,7 +40,7 @@ final class SnippetsContentView: UIView {
 
         headerLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         headerLabel.textColor = .systemGray
-        headerLabel.text = "SNIPPETS"
+        headerLabel.text = "PASTE"
         headerLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(headerLabel)
 
@@ -48,7 +48,10 @@ final class SnippetsContentView: UIView {
         tableView.register(Cell.self, forCellReuseIdentifier: Cell.reuseId)
         tableView.dataSource = self
         tableView.delegate = self
-        tableView.separatorInset = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
+        tableView.separatorInset = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
+        tableView.separatorInsetReference = .fromAutomaticInsets
+        tableView.scrollIndicatorInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 3)
+        tableView.verticalScrollIndicatorInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 3)
         tableView.keyboardDismissMode = .onDrag
         addSubview(tableView)
 
@@ -133,7 +136,7 @@ private final class Cell: UITableViewCell {
     }
 
     private func setup() {
-        titleLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         titleLabel.numberOfLines = 1
         previewLabel.font = .systemFont(ofSize: 13, weight: .regular)
         previewLabel.numberOfLines = 1
@@ -145,10 +148,10 @@ private final class Cell: UITableViewCell {
         insertButton.tintColor = .label
         insertButton.setImage(UIImage(systemName: "arrow.up"), for: .normal)
         insertButton.translatesAutoresizingMaskIntoConstraints = false
-        insertButton.layer.cornerRadius = 16
+        insertButton.layer.cornerRadius = 15
         insertButton.layer.cornerCurve = .continuous
-        insertButton.widthAnchor.constraint(equalToConstant: 32).isActive = true
-        insertButton.heightAnchor.constraint(equalToConstant: 32).isActive = true
+        insertButton.widthAnchor.constraint(equalToConstant: 30).isActive = true
+        insertButton.heightAnchor.constraint(equalToConstant: 30).isActive = true
         insertButton.addTarget(self, action: #selector(insertTapped), for: .touchUpInside)
 
         let titleStack = UIStackView(arrangedSubviews: [titleLabel, UIView()])
@@ -167,7 +170,7 @@ private final class Cell: UITableViewCell {
         let v = UIStackView(arrangedSubviews: [rowStack, previewLabel])
         v.axis = .vertical
         v.alignment = .fill
-        v.spacing = 4
+        v.spacing = 2
 
         v.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(v)

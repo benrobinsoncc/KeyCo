@@ -213,7 +213,7 @@ class KeyboardViewController: UIInputViewController {
         writeButton.addTarget(self, action: #selector(writeTapped), for: .touchUpInside)
         homeView.addSubview(writeButton)
 
-        let snippetsButton = createActionButton(title: "Snippets", color: .white)
+        let snippetsButton = createActionButton(title: "Paste", color: .white)
         snippetsButton.addTarget(self, action: #selector(snippetsTapped), for: .touchUpInside)
         homeView.addSubview(snippetsButton)
 
@@ -509,11 +509,8 @@ class KeyboardViewController: UIInputViewController {
                 .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
                     self?.switchToMode(.home, height: .small)
                 }),
-                .init(style: .text(title: "Add", symbolName: "plus", isPrimary: false), action: { [weak self] in
-                    self?.presentAddSnippet()
-                }),
                 .init(style: .spacer),
-                .init(style: .text(title: "Done", symbolName: nil, isPrimary: true), action: { [weak self] in
+                .init(style: .text(title: "Done", symbolName: nil, isPrimary: false), action: { [weak self] in
                     self?.switchToMode(.home, height: .small)
                 })
             ],
