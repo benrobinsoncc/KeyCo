@@ -4,7 +4,7 @@ import SwiftUI
 struct KeyCoApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            HomeView()
         }
     }
 }
