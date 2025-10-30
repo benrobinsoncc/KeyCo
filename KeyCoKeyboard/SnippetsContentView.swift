@@ -178,7 +178,7 @@ private final class Cell: UITableViewCell {
 extension Cell {
     override func setHighlighted(_ highlighted: Bool, animated: Bool) {
         super.setHighlighted(highlighted, animated: animated)
-        let alpha: CGFloat = highlighted ? 0.6 : 1.0
+        let alpha: CGFloat = highlighted ? 0.4 : 1.0
         if animated {
             UIView.animate(withDuration: 0.15) {
                 self.titleLabel.alpha = alpha
@@ -192,7 +192,7 @@ extension Cell {
 
     override func setSelected(_ selected: Bool, animated: Bool) {
         super.setSelected(selected, animated: animated)
-        let alpha: CGFloat = selected ? 0.6 : 1.0
+        let alpha: CGFloat = selected ? 0.4 : 1.0
         if animated {
             UIView.animate(withDuration: 0.15) {
                 self.titleLabel.alpha = alpha
