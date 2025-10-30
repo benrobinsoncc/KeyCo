@@ -519,7 +519,7 @@ class KeyboardViewController: UIInputViewController {
                 })
             ],
             showsToggle: true,
-            contentInsets: UIEdgeInsets(top: 0, left: 12, bottom: 12, right: 12)
+            contentInsets: UIEdgeInsets(top: 0, left: 14, bottom: 12, right: 12)
         )
         snippetsView.addSubview(snippetsContainer)
         pinContainer(snippetsContainer, to: snippetsView)
