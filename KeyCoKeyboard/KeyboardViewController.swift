@@ -252,6 +252,9 @@ class KeyboardViewController: UIInputViewController {
         snippetsButton.heightAnchor.constraint(equalTo: snippetsButton.widthAnchor).isActive = true
         googleButton.heightAnchor.constraint(equalTo: googleButton.widthAnchor).isActive = true
         chatgptButton.heightAnchor.constraint(equalTo: chatgptButton.widthAnchor).isActive = true
+        // Ensure both rows keep equal heights even under constraint pressure
+        googleButton.heightAnchor.constraint(equalTo: writeButton.heightAnchor).isActive = true
+        chatgptButton.heightAnchor.constraint(equalTo: snippetsButton.heightAnchor).isActive = true
     }
 
     private func createActionButton(title: String, color: UIColor) -> UIButton {
@@ -462,7 +465,7 @@ class KeyboardViewController: UIInputViewController {
                 })
             ],
             showsToggle: true,
-            contentInsets: UIEdgeInsets(top: 0, left: 12, bottom: 12, right: 12)
+            contentInsets: UIEdgeInsets(top: 0, left: 12, bottom: 12, right: 3)
         )
         chatgptView.addSubview(chatgptContainer)
         pinContainer(chatgptContainer, to: chatgptView)
