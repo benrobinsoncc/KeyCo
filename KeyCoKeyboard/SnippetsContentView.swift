@@ -112,7 +112,6 @@ private final class Cell: UITableViewCell {
 
     let titleLabel = UILabel()
     let previewLabel = UILabel()
-    let insertButton = UIButton(type: .system)
 
     var onInsert: (() -> Void)?
     var onCopy: (() -> Void)?
@@ -141,36 +140,17 @@ private final class Cell: UITableViewCell {
         previewLabel.font = .systemFont(ofSize: 13, weight: .regular)
         previewLabel.numberOfLines = 1
 
-        // Circular grey insert button with arrow icon
-        insertButton.backgroundColor = UIColor { trait in
-            trait.userInterfaceStyle == .dark ? UIColor.tertiarySystemBackground : UIColor.secondarySystemBackground
-        }
-        insertButton.tintColor = .label
-        insertButton.setImage(UIImage(systemName: "arrow.up"), for: .normal)
-        insertButton.translatesAutoresizingMaskIntoConstraints = false
-        insertButton.layer.cornerRadius = 15
-        insertButton.layer.cornerCurve = .continuous
-        insertButton.widthAnchor.constraint(equalToConstant: 30).isActive = true
-        insertButton.heightAnchor.constraint(equalToConstant: 30).isActive = true
-        insertButton.addTarget(self, action: #selector(insertTapped), for: .touchUpInside)
+        // No explicit insert button; tapping the row inserts
 
         let titleStack = UIStackView(arrangedSubviews: [titleLabel, UIView()])
         titleStack.axis = .horizontal
         titleStack.alignment = .center
         titleStack.spacing = 8
 
-        let rowStack = UIStackView()
-        rowStack.axis = .horizontal
-        rowStack.alignment = .center
-        rowStack.spacing = 8
-        rowStack.addArrangedSubview(titleStack)
-        rowStack.addArrangedSubview(UIView()) // spacer
-        rowStack.addArrangedSubview(insertButton)
-
-        let v = UIStackView(arrangedSubviews: [rowStack, previewLabel])
+        let v = UIStackView(arrangedSubviews: [titleStack, previewLabel])
         v.axis = .vertical
         v.alignment = .fill
-        v.spacing = 2
+        v.spacing = 1
 
         v.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(v)

@@ -511,7 +511,8 @@ class KeyboardViewController: UIInputViewController {
                 }),
                 .init(style: .spacer),
                 .init(style: .text(title: "Done", symbolName: nil, isPrimary: false), action: { [weak self] in
-                    self?.switchToMode(.home, height: .small)
+                    // Switch back to the default system keyboard
+                    self?.advanceToNextInputMode()
                 })
             ],
             showsToggle: true,
