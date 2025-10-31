@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { checkRateLimit, getClientIP } from './rateLimiter';
 
 interface ChatRequest {
   query: string;
@@ -12,6 +13,24 @@ export default async function handler(
   if (request.method !== 'POST') {
     return response.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Rate limiting: 50 requests per hour per IP (chat uses GPT-4, more expensive)
+  const clientIP = getClientIP(request);
+  const rateLimit = checkRateLimit(clientIP, 50, 60 * 60 * 1000); // 50 requests per hour
+
+  if (!rateLimit.allowed) {
+    const resetSeconds = Math.ceil((rateLimit.resetAt - Date.now()) / 1000);
+    return response.status(429).json({
+      error: 'Rate limit exceeded',
+      message: `Too many requests. Please try again in ${Math.ceil(resetSeconds / 60)} minutes.`,
+      resetAt: new Date(rateLimit.resetAt).toISOString(),
+    });
+  }
+
+  // Add rate limit headers
+  response.setHeader('X-RateLimit-Limit', '50');
+  response.setHeader('X-RateLimit-Remaining', rateLimit.remaining.toString());
+  response.setHeader('X-RateLimit-Reset', rateLimit.resetAt.toString());
 
   try {
     const { query } = request.body as ChatRequest;

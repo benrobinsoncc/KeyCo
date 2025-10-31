@@ -352,12 +352,13 @@ class KeyboardViewController: UIInputViewController {
         writeContentView.addSubview(toneMapView)
         NSLog("[Write Mode] Tone map view initialized")
         
-        // Setup message preview label
+        // Setup message preview label (hidden by default, only shown for errors)
         messagePreviewLabel = UILabel()
         messagePreviewLabel.font = .systemFont(ofSize: 11, weight: .regular)
         messagePreviewLabel.textColor = .secondaryLabel
         messagePreviewLabel.textAlignment = .center
         messagePreviewLabel.numberOfLines = 4
+        messagePreviewLabel.isHidden = true  // Hidden by default, only show errors
         messagePreviewLabel.translatesAutoresizingMaskIntoConstraints = false
         writeContentView.addSubview(messagePreviewLabel)
         
