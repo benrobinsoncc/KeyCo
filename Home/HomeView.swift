@@ -18,28 +18,20 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    // Status Card at top
-                    VStack(alignment: .leading, spacing: 12) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Keyboard Copilot")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundStyle(Color(uiColor: .label))
-                            
-                            Text(isKeyboardActive ? "Active" : "Inactive")
-                                .font(.subheadline)
-                                .foregroundStyle(isKeyboardActive ? .green : .orange)
-                        }
+                    // Status Section - Centered
+                    HStack(spacing: 12) {
+                        Image(systemName: isKeyboardActive ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(isKeyboardActive ? .green : .orange)
+
+                        Text(isKeyboardActive ? "Keyboard active" : "Keyboard inactive")
+                            .font(.headline)
+                            .foregroundStyle(isKeyboardActive ? .green : .orange)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20)
-                    .background(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .fill(Color(uiColor: .secondarySystemGroupedBackground))
-                    )
-                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 20)
                     .padding(.top, 8)
-                    
+
                     // Setup Section - 2 cards side by side
                     VStack(alignment: .leading, spacing: 0) {
                         Text("Setup")
@@ -71,6 +63,68 @@ struct HomeView: View {
                         .padding(.horizontal, 20)
                     }
 
+                    // Customization Section
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Customise")
+                            .font(.caption)
+                            .textCase(.uppercase)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 8)
+
+                        VStack(spacing: 0) {
+                            Button(action: {
+                                showingAppIcon = true
+                            }) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "photo.fill")
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(Color(uiColor: .label))
+                                        .frame(width: 28, height: 28)
+                                        .background(Circle().fill(Color(uiColor: .secondarySystemFill)))
+                                    Text("App icon")
+                                        .foregroundStyle(Color(uiColor: .label))
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(Color(uiColor: .tertiaryLabel))
+                                }
+                                .padding(.leading, 12)
+                                .padding(.trailing, 16)
+                                .padding(.vertical, 12)
+                            }
+
+                            Divider()
+                                .padding(.leading, 52)
+
+                            Button(action: {
+                                showingTheme = true
+                            }) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "paintbrush.fill")
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(Color(uiColor: .label))
+                                        .frame(width: 28, height: 28)
+                                        .background(Circle().fill(Color(uiColor: .secondarySystemFill)))
+                                    Text("Theme")
+                                        .foregroundStyle(Color(uiColor: .label))
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(Color(uiColor: .tertiaryLabel))
+                                }
+                                .padding(.leading, 12)
+                                .padding(.trailing, 16)
+                                .padding(.vertical, 12)
+                            }
+                        }
+                        .background(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                        )
+                        .padding(.horizontal, 16)
+                    }
+
                     // Support Section
                     VStack(alignment: .leading, spacing: 0) {
                         Text("Support")
@@ -81,6 +135,50 @@ struct HomeView: View {
                             .padding(.bottom, 8)
 
                         VStack(spacing: 0) {
+                            Button(action: shareApp) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "square.and.arrow.up.fill")
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(Color(uiColor: .label))
+                                        .frame(width: 28, height: 28)
+                                        .background(Circle().fill(Color(uiColor: .secondarySystemFill)))
+                                    Text("Share app")
+                                        .foregroundStyle(Color(uiColor: .label))
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(Color(uiColor: .tertiaryLabel))
+                                }
+                                .padding(.leading, 12)
+                                .padding(.trailing, 16)
+                                .padding(.vertical, 12)
+                            }
+
+                            Divider()
+                                .padding(.leading, 52)
+
+                            Button(action: requestReview) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(Color(uiColor: .label))
+                                        .frame(width: 28, height: 28)
+                                        .background(Circle().fill(Color(uiColor: .secondarySystemFill)))
+                                    Text("Rate us")
+                                        .foregroundStyle(Color(uiColor: .label))
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(Color(uiColor: .tertiaryLabel))
+                                }
+                                .padding(.leading, 12)
+                                .padding(.trailing, 16)
+                                .padding(.vertical, 12)
+                            }
+
+                            Divider()
+                                .padding(.leading, 52)
+
                             Button(action: {
                                 showingFeedback = true
                             }) {
@@ -100,7 +198,6 @@ struct HomeView: View {
                                 .padding(.leading, 12)
                                 .padding(.trailing, 16)
                                 .padding(.vertical, 12)
-                                .frame(maxWidth: .infinity, alignment: .leading)
                             }
 
                             Divider()
@@ -125,7 +222,6 @@ struct HomeView: View {
                                 .padding(.leading, 12)
                                 .padding(.trailing, 16)
                                 .padding(.vertical, 12)
-                                .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
                         .background(
@@ -138,8 +234,21 @@ struct HomeView: View {
                 .padding(.bottom, 20)
             }
             .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("KeyCo")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingSnippets = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "doc.on.doc")
+                            Text("Snippets")
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(Color.accentColor)
+                    }
+                }
+            }
             .sheet(isPresented: $showingSnippets) {
                 SnippetsManagementView()
             }
