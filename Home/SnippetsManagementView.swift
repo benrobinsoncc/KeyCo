@@ -76,17 +76,20 @@ struct SnippetRow: View {
     let onDelete: (Snippet) -> Void
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(snippet.title)
-                .font(.headline)
-                .foregroundStyle(Color(uiColor: .label))
-            
-            Text(snippet.text)
-                .font(.subheadline)
-                .foregroundStyle(Color(uiColor: .secondaryLabel))
-                .lineLimit(2)
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(snippet.title)
+                    .font(.headline)
+                    .foregroundStyle(Color(uiColor: .label))
+                
+                Text(snippet.text)
+                    .font(.subheadline)
+                    .foregroundStyle(Color(uiColor: .secondaryLabel))
+                    .lineLimit(2)
+            }
+            .padding(.vertical, 4)
+            Spacer()
         }
-        .padding(.vertical, 4)
         .contentShape(Rectangle())
         .onTapGesture {
             onEdit(snippet)

@@ -100,6 +100,7 @@ struct HomeView: View {
                                 .padding(.leading, 12)
                                 .padding(.trailing, 16)
                                 .padding(.vertical, 12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                             }
 
                             Divider()
@@ -124,6 +125,7 @@ struct HomeView: View {
                                 .padding(.leading, 12)
                                 .padding(.trailing, 16)
                                 .padding(.vertical, 12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
                         .background(
