@@ -59,50 +59,6 @@ struct HomeView: View {
                             .padding(.bottom, 8)
 
                         VStack(spacing: 0) {
-                            Button(action: shareApp) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "square.and.arrow.up.fill")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(Color(uiColor: .label))
-                                        .frame(width: 28, height: 28)
-                                        .background(Circle().fill(Color(uiColor: .secondarySystemFill)))
-                                    Text("Share app")
-                                        .foregroundStyle(Color(uiColor: .label))
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundStyle(Color(uiColor: .tertiaryLabel))
-                                }
-                                .padding(.leading, 12)
-                                .padding(.trailing, 16)
-                                .padding(.vertical, 12)
-                            }
-
-                            Divider()
-                                .padding(.leading, 52)
-
-                            Button(action: requestReview) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "star.fill")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(Color(uiColor: .label))
-                                        .frame(width: 28, height: 28)
-                                        .background(Circle().fill(Color(uiColor: .secondarySystemFill)))
-                                    Text("Rate us")
-                                        .foregroundStyle(Color(uiColor: .label))
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundStyle(Color(uiColor: .tertiaryLabel))
-                                }
-                                .padding(.leading, 12)
-                                .padding(.trailing, 16)
-                                .padding(.vertical, 12)
-                            }
-
-                            Divider()
-                                .padding(.leading, 52)
-
                             Button(action: {
                                 showingFeedback = true
                             }) {
@@ -158,9 +114,9 @@ struct HomeView: View {
                 .padding(.bottom, 20)
             }
             .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("KeyCo")
+            .navigationTitle("Keyboard Copilot")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .principal) {
                     Button(action: {}) {
                         HStack(spacing: 4) {
                             Image(systemName: isKeyboardActive ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
@@ -168,6 +124,12 @@ struct HomeView: View {
                         }
                         .font(.subheadline)
                         .foregroundStyle(isKeyboardActive ? .green : .orange)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(isKeyboardActive ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
+                        )
                     }
                     .disabled(true)
                 }
