@@ -104,7 +104,7 @@ final class SnippetsStore: ObservableObject {
             
             // Post Darwin notification to sync between host app and keyboard extension
             let notificationCenter = CFNotificationCenterGetDarwinNotifyCenter()
-            let notificationName = Self.snippetsUpdatedNotification.rawValue as CFString
+            let notificationName = CFNotificationName(Self.snippetsUpdatedNotification.rawValue as CFString)
             CFNotificationCenterPostNotification(
                 notificationCenter,
                 notificationName,
