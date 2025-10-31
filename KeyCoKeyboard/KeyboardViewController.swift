@@ -83,6 +83,7 @@ class KeyboardViewController: UIInputViewController {
         
         // Add Darwin notification observer for snippet updates
         let notificationCenter = CFNotificationCenterGetDarwinNotifyCenter()
+        let notificationName = SnippetsStore.snippetsUpdatedNotification.rawValue as CFString
         CFNotificationCenterAddObserver(
             notificationCenter,
             Unmanaged.passUnretained(self).toOpaque(),
@@ -93,7 +94,7 @@ class KeyboardViewController: UIInputViewController {
                     instance.reloadSnippets()
                 }
             },
-            CFNotificationName(SnippetsStore.snippetsUpdatedNotification.rawValue as CFString),
+            notificationName,
             nil,
             .deliverImmediately
         )
@@ -103,10 +104,11 @@ class KeyboardViewController: UIInputViewController {
         NotificationCenter.default.removeObserver(self)
         // Remove Darwin notification observer
         let notificationCenter = CFNotificationCenterGetDarwinNotifyCenter()
+        let notificationName = SnippetsStore.snippetsUpdatedNotification.rawValue as CFString
         CFNotificationCenterRemoveObserver(
             notificationCenter,
             Unmanaged.passUnretained(self).toOpaque(),
-            CFNotificationName(SnippetsStore.snippetsUpdatedNotification.rawValue as CFString),
+            notificationName,
             nil
         )
     }
