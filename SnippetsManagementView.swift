@@ -18,10 +18,8 @@ struct SnippetsManagementView: View {
             .navigationTitle("Snippets")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
+                    Button("New") {
                         showingAddSheet = true
-                    } label: {
-                        Image(systemName: "plus")
                     }
                 }
             }
@@ -52,15 +50,6 @@ struct SnippetsManagementView: View {
                     }
                 )
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showingAddSheet = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                }
-            }
         }
     }
     
@@ -77,6 +66,7 @@ struct SnippetsManagementView: View {
 struct SnippetRow: View {
     let snippet: Snippet
     let onEdit: (Snippet) -> Void
+    @State private var showingContextMenu = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -93,6 +83,13 @@ struct SnippetRow: View {
         .contentShape(Rectangle())
         .onTapGesture {
             onEdit(snippet)
+        }
+        .contextMenu {
+            Button(role: .destructive, action: {
+                // Delete would need access to store here
+            }) {
+                Label("Delete", systemImage: "trash")
+            }
         }
     }
 }

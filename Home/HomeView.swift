@@ -18,20 +18,6 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    // Status Section - Centered
-                    HStack(spacing: 12) {
-                        Image(systemName: isKeyboardActive ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(isKeyboardActive ? .green : .orange)
-
-                        Text(isKeyboardActive ? "Keyboard active" : "Keyboard inactive")
-                            .font(.headline)
-                            .foregroundStyle(isKeyboardActive ? .green : .orange)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
-
                     // Setup Section - 2 cards side by side
                     VStack(alignment: .leading, spacing: 0) {
                         Text("Setup")
@@ -61,68 +47,6 @@ struct HomeView: View {
                             }
                         }
                         .padding(.horizontal, 20)
-                    }
-
-                    // Customization Section
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text("Customise")
-                            .font(.caption)
-                            .textCase(.uppercase)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 8)
-
-                        VStack(spacing: 0) {
-                            Button(action: {
-                                showingAppIcon = true
-                            }) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "photo.fill")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(Color(uiColor: .label))
-                                        .frame(width: 28, height: 28)
-                                        .background(Circle().fill(Color(uiColor: .secondarySystemFill)))
-                                    Text("App icon")
-                                        .foregroundStyle(Color(uiColor: .label))
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundStyle(Color(uiColor: .tertiaryLabel))
-                                }
-                                .padding(.leading, 12)
-                                .padding(.trailing, 16)
-                                .padding(.vertical, 12)
-                            }
-
-                            Divider()
-                                .padding(.leading, 52)
-
-                            Button(action: {
-                                showingTheme = true
-                            }) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "paintbrush.fill")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(Color(uiColor: .label))
-                                        .frame(width: 28, height: 28)
-                                        .background(Circle().fill(Color(uiColor: .secondarySystemFill)))
-                                    Text("Theme")
-                                        .foregroundStyle(Color(uiColor: .label))
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundStyle(Color(uiColor: .tertiaryLabel))
-                                }
-                                .padding(.leading, 12)
-                                .padding(.trailing, 16)
-                                .padding(.vertical, 12)
-                            }
-                        }
-                        .background(
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .fill(Color(uiColor: .secondarySystemGroupedBackground))
-                        )
-                        .padding(.horizontal, 16)
                     }
 
                     // Support Section
@@ -237,16 +161,15 @@ struct HomeView: View {
             .navigationTitle("KeyCo")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showingSnippets = true
-                    } label: {
+                    Button(action: {}) {
                         HStack(spacing: 4) {
-                            Image(systemName: "doc.on.doc")
-                            Text("Snippets")
+                            Image(systemName: isKeyboardActive ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                            Text(isKeyboardActive ? "Active" : "Inactive")
                         }
                         .font(.subheadline)
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(isKeyboardActive ? .green : .orange)
                     }
+                    .disabled(true)
                 }
             }
             .sheet(isPresented: $showingSnippets) {
