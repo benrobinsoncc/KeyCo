@@ -83,7 +83,7 @@ class KeyboardViewController: UIInputViewController {
         
         // Add Darwin notification observer for snippet updates
         let notificationCenter = CFNotificationCenterGetDarwinNotifyCenter()
-        let notificationName = SnippetsStore.snippetsUpdatedNotification.rawValue as CFString
+        let notificationName = CFNotificationName(SnippetsStore.snippetsUpdatedNotification.rawValue as CFString)
         CFNotificationCenterAddObserver(
             notificationCenter,
             Unmanaged.passUnretained(self).toOpaque(),
@@ -104,7 +104,7 @@ class KeyboardViewController: UIInputViewController {
         NotificationCenter.default.removeObserver(self)
         // Remove Darwin notification observer
         let notificationCenter = CFNotificationCenterGetDarwinNotifyCenter()
-        let notificationName = SnippetsStore.snippetsUpdatedNotification.rawValue as CFString
+        let notificationName = CFNotificationName(SnippetsStore.snippetsUpdatedNotification.rawValue as CFString)
         CFNotificationCenterRemoveObserver(
             notificationCenter,
             Unmanaged.passUnretained(self).toOpaque(),
@@ -318,7 +318,7 @@ class KeyboardViewController: UIInputViewController {
         toneMapView.translatesAutoresizingMaskIntoConstraints = false
         
         // While dragging - just update coordinates (no API call)
-        toneMapView.onPositionChanged = { [weak self] x, y in
+        toneMapView.onPositionChanged = { x, y in
             NSLog("[Write Mode] Dragging - x=\(x), y=\(y)")
             // Don't update preview label - tone map fills entire space now
         }
