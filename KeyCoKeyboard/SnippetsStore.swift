@@ -106,7 +106,7 @@ final class SnippetsStore: ObservableObject {
             let notification = CFNotificationCenterGetDarwinNotifyCenter()
             CFNotificationCenterPostNotification(
                 notification,
-                CFNotificationName(rawValue: Self.snippetsUpdatedNotification.rawValue as CFString),
+                CFNotificationName(Self.snippetsUpdatedNotification.rawValue as CFString),
                 nil,
                 nil,
                 true

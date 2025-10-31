@@ -93,7 +93,7 @@ class KeyboardViewController: UIInputViewController {
                     instance.reloadSnippets()
                 }
             },
-            SnippetsStore.snippetsUpdatedNotification.rawValue as CFString,
+            CFNotificationName(SnippetsStore.snippetsUpdatedNotification.rawValue as CFString),
             nil,
             .deliverImmediately
         )
@@ -106,7 +106,7 @@ class KeyboardViewController: UIInputViewController {
         CFNotificationCenterRemoveObserver(
             notificationCenter,
             Unmanaged.passUnretained(self).toOpaque(),
-            SnippetsStore.snippetsUpdatedNotification.rawValue as CFString,
+            CFNotificationName(SnippetsStore.snippetsUpdatedNotification.rawValue as CFString),
             nil
         )
     }

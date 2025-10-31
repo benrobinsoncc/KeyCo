@@ -46,10 +46,8 @@ struct SnippetsManagementView: View {
                 AddEditSnippetView(
                     mode: .edit(snippet),
                     onSave: { title, text in
-                        if let id = snippet.id as? UUID {
-                            store.rename(id: id, newTitle: title)
-                            store.updateText(id: id, newText: text)
-                        }
+                        store.rename(id: snippet.id, newTitle: title)
+                        store.updateText(id: snippet.id, newText: text)
                         editingSnippet = nil
                     },
                     onCancel: {
@@ -63,9 +61,7 @@ struct SnippetsManagementView: View {
     private func deleteSnippets(at offsets: IndexSet) {
         let snippets = store.getAll()
         for index in offsets {
-            if let id = snippets[index].id as? UUID {
-                store.delete(id: id)
-            }
+            store.delete(id: snippets[index].id)
         }
     }
 }
