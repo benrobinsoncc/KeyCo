@@ -1,0 +1,13 @@
+node_modules
+*.swift
+*.xcodeproj
+*.xcworkspace
+.DS_Store
+*.bak
+KeyCo/
+KeyCoKeyboard/
+Home/
+Components/
+*.entitlements
+Info.plist
+

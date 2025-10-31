@@ -1,0 +1,15 @@
+{
+  "name": "keyco-backend",
+  "version": "1.0.0",
+  "description": "Backend API for KeyCo keyboard app",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@vercel/node": "^2.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

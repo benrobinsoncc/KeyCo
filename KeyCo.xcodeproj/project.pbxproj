@@ -18,6 +18,8 @@
 		524ADCEF2EB3FC8000DE2382 /* SnippetsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCED2EB3FC8000DE2382 /* SnippetsStore.swift */; };
 		524ADCF22EB5255000DE2382 /* SnippetsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCF12EB5255000DE2382 /* SnippetsStore.swift */; };
 		524ADCF32EB5255000DE2382 /* SnippetsManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCF02EB5255000DE2382 /* SnippetsManagementView.swift */; };
+		524ADCF52EB5565800DE2382 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCF42EB5565800DE2382 /* Config.swift */; };
+		524ADCF72EB556DB00DE2382 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCF62EB556DB00DE2382 /* KeychainHelper.swift */; };
 		52E5DE7A2EA94A510021BC48 /* Shimmer in Frameworks */ = {isa = PBXBuildFile; productRef = 52E5DE792EA94A510021BC48 /* Shimmer */; };
 		52E5DE7C2EA94A5D0021BC48 /* Shimmer in Frameworks */ = {isa = PBXBuildFile; productRef = 52E5DE7B2EA94A5D0021BC48 /* Shimmer */; };
 		52E5DE7F2EA969970021BC48 /* AnimateText in Frameworks */ = {isa = PBXBuildFile; productRef = 52E5DE7E2EA969970021BC48 /* AnimateText */; };
@@ -32,6 +34,8 @@
 		A8000002000000000000001 /* FastBlurEffect.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8000001000000000000001 /* FastBlurEffect.swift */; };
 		A9000001000000000000001 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9000002000000000000001 /* KeychainHelper.swift */; };
 		AD000001000000000000001 /* ToneMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD000002000000000000001 /* ToneMapView.swift */; };
+		AE000001000000000000001 /* BackendConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE000002000000000000001 /* BackendConfig.swift */; };
+		AF000001000000000000001 /* NetworkTestHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF000002000000000000001 /* NetworkTestHelper.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -70,6 +74,10 @@
 		524ADCED2EB3FC8000DE2382 /* SnippetsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetsStore.swift; sourceTree = "<group>"; };
 		524ADCF02EB5255000DE2382 /* SnippetsManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetsManagementView.swift; sourceTree = "<group>"; };
 		524ADCF12EB5255000DE2382 /* SnippetsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetsStore.swift; sourceTree = "<group>"; };
+		524ADCF42EB5565800DE2382 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		524ADCF62EB556DB00DE2382 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+		524ADCF82EB559CF00DE2382 /* KeyCo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KeyCo.entitlements; sourceTree = "<group>"; };
+		524ADCF92EB559F700DE2382 /* KeyCoKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KeyCoKeyboard.entitlements; sourceTree = "<group>"; };
 		A1000002000000000000001 /* KeyCoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCoApp.swift; sourceTree = "<group>"; };
 		A1000004000000000000001 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A1000006000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -83,6 +91,8 @@
 		A8000001000000000000001 /* FastBlurEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastBlurEffect.swift; sourceTree = "<group>"; };
 		A9000002000000000000001 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		AD000002000000000000001 /* ToneMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToneMapView.swift; sourceTree = "<group>"; };
+		AE000002000000000000001 /* BackendConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendConfig.swift; sourceTree = "<group>"; };
+		AF000002000000000000001 /* NetworkTestHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkTestHelper.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -146,6 +156,8 @@
 		A1000021000000000000001 = {
 			isa = PBXGroup;
 			children = (
+				524ADCF62EB556DB00DE2382 /* KeychainHelper.swift */,
+				524ADCF42EB5565800DE2382 /* Config.swift */,
 				524ADCF02EB5255000DE2382 /* SnippetsManagementView.swift */,
 				524ADCF12EB5255000DE2382 /* SnippetsStore.swift */,
 				524ADCC22EAD2A3800DE2382 /* AppDelegate.swift */,
@@ -164,6 +176,7 @@
 		A1000022000000000000001 /* KeyCo */ = {
 			isa = PBXGroup;
 			children = (
+				524ADCF82EB559CF00DE2382 /* KeyCo.entitlements */,
 				A1000002000000000000001 /* KeyCoApp.swift */,
 				A1000004000000000000001 /* ContentView.swift */,
 				A1000006000000000000001 /* Assets.xcassets */,
@@ -175,6 +188,7 @@
 		A1000023000000000000001 /* KeyCoKeyboard */ = {
 			isa = PBXGroup;
 			children = (
+				524ADCF92EB559F700DE2382 /* KeyCoKeyboard.entitlements */,
 				524ADCEC2EB3FC8000DE2382 /* SnippetsContentView.swift */,
 				524ADCED2EB3FC8000DE2382 /* SnippetsStore.swift */,
 				A5000002000000000000001 /* ActionContainerView.swift */,
@@ -183,6 +197,8 @@
 				A6000002000000000000001 /* ResponseContentView.swift */,
 				A8000001000000000000001 /* FastBlurEffect.swift */,
 				AD000002000000000000001 /* ToneMapView.swift */,
+				AE000002000000000000001 /* BackendConfig.swift */,
+				AF000002000000000000001 /* NetworkTestHelper.swift */,
 				A1000018000000000000001 /* Info.plist */,
 			);
 			path = KeyCoKeyboard;
@@ -318,8 +334,10 @@
 				524ADCD62EAD2A3800DE2382 /* SceneDelegate.swift in Sources */,
 				524ADCDA2EAD2A3800DE2382 /* PrimaryButton.swift in Sources */,
 				524ADCDD2EAD2A3800DE2382 /* AppDelegate.swift in Sources */,
+				524ADCF52EB5565800DE2382 /* Config.swift in Sources */,
 				524ADCE02EAD2A3800DE2382 /* MailComposeView.swift in Sources */,
 				524ADCE22EAD2A3800DE2382 /* HomeView.swift in Sources */,
+				524ADCF72EB556DB00DE2382 /* KeychainHelper.swift in Sources */,
 				524ADCE32EAD2A3800DE2382 /* WelcomeView.swift in Sources */,
 				524ADCF22EB5255000DE2382 /* SnippetsStore.swift in Sources */,
 				524ADCF32EB5255000DE2382 /* SnippetsManagementView.swift in Sources */,
@@ -336,6 +354,8 @@
 				A9000001000000000000001 /* KeychainHelper.swift in Sources */,
 				A6000001000000000000001 /* ResponseContentView.swift in Sources */,
 				AD000001000000000000001 /* ToneMapView.swift in Sources */,
+				AE000001000000000000001 /* BackendConfig.swift in Sources */,
+				AF000001000000000000001 /* NetworkTestHelper.swift in Sources */,
 				A8000002000000000000001 /* FastBlurEffect.swift in Sources */,
 				524ADCEE2EB3FC8000DE2382 /* SnippetsContentView.swift in Sources */,
 				524ADCEF2EB3FC8000DE2382 /* SnippetsStore.swift in Sources */,
@@ -477,6 +497,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = KeyCo/KeyCo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"KeyCo/Preview Content\"";
@@ -507,6 +528,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = KeyCo/KeyCo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"KeyCo/Preview Content\"";
@@ -535,6 +557,7 @@
 		A1000039000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = KeyCoKeyboard/KeyCoKeyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = F8ZMT5492T;
@@ -560,6 +583,7 @@
 		A1000040000000000000001 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = KeyCoKeyboard/KeyCoKeyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = F8ZMT5492T;

@@ -50,6 +50,7 @@ class KeyboardViewController: UIInputViewController {
     private var debounceTimer: Timer?
     private var originalText: String = ""
     private var currentTask: URLSessionDataTask?
+    private var loadingTimeoutTimer: Timer?
 
     // ChatGPT content view
     private var chatgptContentView: ResponseContentView!
@@ -58,15 +59,15 @@ class KeyboardViewController: UIInputViewController {
     private let containerMargin: CGFloat = 3
     private let cornerRadius: CGFloat = 20
 
-    // ChatGPT API - stored securely in Keychain
-    private var chatGPTAPIKey: String? {
-        return KeychainHelper.retrieveAPIKey()
-    }
+    // Backend API configuration - API key is stored server-side
     // MARK: - Lifecycle
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        // Test network connectivity
+        NetworkTestHelper.testConnectivity()
+        
         // Restore state first
         restoreState()
 
@@ -122,6 +123,12 @@ class KeyboardViewController: UIInputViewController {
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        // Clean up any pending operations when keyboard disappears
+        currentTask?.cancel()
+        currentTask = nil
+        loadingTimeoutTimer?.invalidate()
+        loadingTimeoutTimer = nil
+        toneMapView?.setLoading(false)
         persistState()
     }
     
@@ -330,10 +337,13 @@ class KeyboardViewController: UIInputViewController {
             let currentText = self?.currentDocumentText() ?? ""
             guard !currentText.isEmpty else {
                 NSLog("[Write Mode] No text to rewrite")
+                // Hide status label - only show errors
+                self?.messagePreviewLabel?.isHidden = true
                 return
             }
             
-            // Visual feedback is now shown in the tone map selector loading spinner
+            // Hide status label - only show errors
+            self?.messagePreviewLabel?.isHidden = true
             
             // Call AI immediately
             self?.regenerateTextWithTone(tone: x, length: y, originalText: currentText)
@@ -1008,11 +1018,18 @@ class KeyboardViewController: UIInputViewController {
         
         guard !textToUse.isEmpty else {
             NSLog("[Write Mode] Cannot regenerate - text is empty")
+            // Clear loading state if it was set
+            DispatchQueue.main.async { [weak self] in
+                self?.toneMapView?.setLoading(false)
+            }
             return
         }
         
-        // Cancel any existing API task
+        // Cancel any existing API task and cleanup
         currentTask?.cancel()
+        currentTask = nil
+        loadingTimeoutTimer?.invalidate()
+        loadingTimeoutTimer = nil
         
         NSLog("[Write Mode] Starting AI regeneration for text: '\(textToUse)'")
         isWriting = true
@@ -1020,72 +1037,64 @@ class KeyboardViewController: UIInputViewController {
         // Show spinner in the selector knob
         DispatchQueue.main.async { [weak self] in
             self?.toneMapView?.setLoading(true)
+            
+            // Hide status label - only show errors
+            self?.messagePreviewLabel?.isHidden = true
+            
+            // Set a timeout to ensure loading state is cleared if callback never fires
+            // 15 seconds should be enough - API usually responds in 2-5 seconds
+            self?.loadingTimeoutTimer?.invalidate()
+            self?.loadingTimeoutTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: false) { [weak self] _ in
+                NSLog("[Write Mode] TIMEOUT: API call timed out, clearing loading state")
+                self?.toneMapView?.setLoading(false)
+                self?.isWriting = false
+                self?.currentTask = nil
+                self?.handleWriteError("Request timed out. Please try again.")
+            }
         }
         
         // Visual feedback is shown via the loading spinner in the tone map selector
         
-        // Add a configuration with extended timeout and logging
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 30
-        config.timeoutIntervalForResource = 60
-        let session = URLSession(configuration: config)
-        
-        // Build prompt based on position with explicit constraints
-        let toneDescription = describeTone(tone)
-        let lengthDescription = describeLength(length)
-        let (maxWords, maxSentences) = getLengthConstraints(length)
-        
-        let prompt = """
-        Rewrite the following message with STRICTLY the following requirements:
-        
-        TONE: \(toneDescription)
-        LENGTH: \(lengthDescription)
-        
-        CRITICAL CONSTRAINTS:
-        - Maximum word count: \(maxWords) words
-        - Maximum sentences: \(maxSentences)
-        - You MUST stay within these limits
-        - Do not include any explanations, just the rewritten message
-        - Preserve the core meaning and intent
-        
-        Original message: \(textToUse)
-        
-        Rewritten message (strictly within limits):
-        """
-
-        // Make API request
-        guard let apiKey = chatGPTAPIKey else {
-            handleWriteError("API key not configured. Please set it in Keychain.")
+        // Call backend API instead of OpenAI directly
+        guard let url = BackendConfig.rewriteURL else {
+            DispatchQueue.main.async { [weak self] in
+                self?.handleWriteError("Invalid backend URL. Please configure BackendConfig.baseURL")
+            }
             return
         }
         
-        guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else {
-            handleWriteError("Invalid URL")
+        NSLog("[Write Mode] ===== BACKEND API CALL =====")
+        NSLog("[Write Mode] Base URL: \(BackendConfig.baseURL)")
+        NSLog("[Write Mode] Full URL: \(url.absoluteString)")
+        NSLog("[Write Mode] URL is valid: \(url != nil)")
+        NSLog("[Write Mode] Host: \(url.host ?? "nil")")
+        NSLog("[Write Mode] Scheme: \(url.scheme ?? "nil")")
+        NSLog("[Write Mode] ============================")
+        
+        // Test if URL can be created
+        guard url.host != nil, url.scheme == "https" else {
+            NSLog("[Write Mode] ❌ Invalid URL structure!")
+            DispatchQueue.main.async { [weak self] in
+                self?.handleWriteError("Invalid URL configuration")
+            }
             return
         }
-        
-        NSLog("[Write Mode] URL: \(url.absoluteString)")
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 30
-
-        // Calculate dynamic max_tokens based on length
-        // Brief responses need fewer tokens, detailed need more
-        let maxTokens = calculateMaxTokens(for: length)
         
         let requestBody: [String: Any] = [
-            "model": "gpt-3.5-turbo",  // Using cheaper model
-            "messages": [
-                ["role": "user", "content": prompt]
-            ],
-            "max_tokens": maxTokens
+            "text": textToUse,
+            "tone": Double(tone),
+            "length": Double(length)
         ]
 
         guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else {
-            handleWriteError("Failed to create request")
+            DispatchQueue.main.async { [weak self] in
+                self?.handleWriteError("Failed to create request")
+            }
             return
         }
 
@@ -1093,8 +1102,12 @@ class KeyboardViewController: UIInputViewController {
 
         NSLog("[Write Mode] Creating URLSession task with URL: \(request.url?.absoluteString ?? "nil")")
 
-        let task = session.dataTask(with: request) { [weak self] data, response, error in
+        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             DispatchQueue.main.async {
+                // Cancel timeout timer since we got a response
+                self?.loadingTimeoutTimer?.invalidate()
+                self?.loadingTimeoutTimer = nil
+                
                 // Clear the current task reference
                 self?.currentTask = nil
                 
@@ -1104,14 +1117,53 @@ class KeyboardViewController: UIInputViewController {
                 
                 // Hide spinner in selector knob
                 self.toneMapView?.setLoading(false)
+                
+                // Hide status label - only show errors
+                self.messagePreviewLabel?.isHidden = true
 
                 NSLog("[Write Mode] Response received. Error: \(error?.localizedDescription ?? "none"), Data: \(data != nil ? "present" : "nil")")
+                
+                // Detailed error logging
+                if let error = error {
+                    let nsError = error as NSError
+                    NSLog("[Write Mode] ERROR DETAILS:")
+                    NSLog("[Write Mode]   Domain: \(nsError.domain)")
+                    NSLog("[Write Mode]   Code: \(nsError.code)")
+                    NSLog("[Write Mode]   Description: \(nsError.localizedDescription)")
+                    NSLog("[Write Mode]   UserInfo: \(nsError.userInfo)")
+                }
+                
+                // Check HTTP response status
+                if let httpResponse = response as? HTTPURLResponse {
+                    NSLog("[Write Mode] HTTP Status Code: \(httpResponse.statusCode)")
+                    if httpResponse.statusCode < 200 || httpResponse.statusCode >= 300 {
+                        let errorMsg = "HTTP Error: \(httpResponse.statusCode)"
+                        NSLog("[Write Mode] \(errorMsg)")
+                        self.handleWriteError(errorMsg)
+                        return
+                    }
+                }
 
                 if let error = error {
-                    // Ignore cancellation errors
-                    if (error as NSError).code != NSURLErrorCancelled {
-                        NSLog("[Write Mode] Network error: \(error.localizedDescription)")
-                        self.handleWriteError(error.localizedDescription)
+                    // Check for specific error codes
+                    let nsError = error as NSError
+                    NSLog("[Write Mode] Network error: \(error.localizedDescription), Code: \(nsError.code), Domain: \(nsError.domain)")
+                    
+                    // Ignore cancellation errors (user might have cancelled)
+                    if nsError.code != NSURLErrorCancelled {
+                        // Handle specific error codes
+                        if nsError.code == NSURLErrorTimedOut {
+                            self.handleWriteError("Request timed out. Please try again.")
+                        } else if nsError.code == NSURLErrorCannotFindHost || nsError.code == -1003 {
+                            NSLog("[Write Mode] ⚠️ Hostname resolution failed. URL: \(url.absoluteString)")
+                            NSLog("[Write Mode] Check device internet connection and DNS settings")
+                            self.handleWriteError("Cannot connect to server. Check internet connection.")
+                        } else {
+                            self.handleWriteError("Network error: \(error.localizedDescription)")
+                        }
+                    } else {
+                        // Even for cancellation, make sure loading is cleared (should already be done above)
+                        NSLog("[Write Mode] Request was cancelled")
                     }
                     return
                 }
@@ -1126,50 +1178,48 @@ class KeyboardViewController: UIInputViewController {
                     NSLog("[Write Mode] Raw API response: \(rawString)")
                 }
 
-                do {
-                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                        NSLog("[Write Mode] Parsed JSON keys: \(json.keys)")
-                        
-                        // Check for API errors first
-                        if let error = json["error"] as? [String: Any],
-                           let errorMessage = error["message"] as? String {
-                            NSLog("[Write Mode] API Error: \(errorMessage)")
-                            self.handleWriteError("API Error: \(errorMessage)")
-                            return
-                        }
-                        
-                        if let choices = json["choices"] as? [[String: Any]],
-                           let firstChoice = choices.first {
-                            NSLog("[Write Mode] First choice: \(firstChoice)")
+                    do {
+                        if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                            NSLog("[Write Mode] Parsed JSON keys: \(json.keys)")
                             
-                            if let message = firstChoice["message"] as? [String: Any],
-                       let content = message["content"] as? String {
-                                let newText = content.trimmingCharacters(in: .whitespacesAndNewlines)
-                                NSLog("[Write Mode] Got AI response: '\(newText)'")
+                            // Check for API errors first
+                            if let error = json["error"] as? String {
+                                NSLog("[Write Mode] API Error: \(error)")
+                                let details = json["details"] as? String
+                                let errorMessage = details ?? error
+                                self.handleWriteError("API Error: \(errorMessage)")
+                                return
+                            }
+                            
+                            // Backend returns: { "text": "rewritten text" }
+                            if let newText = json["text"] as? String {
+                                let trimmedText = newText.trimmingCharacters(in: .whitespacesAndNewlines)
+                                NSLog("[Write Mode] Got AI response: '\(trimmedText)'")
                                 
                                 // Try to replace text
-                                self.replaceTextFieldContent(with: newText)
-                    } else {
-                                NSLog("[Write Mode] Failed to parse message or content")
-                                self.handleWriteError("Invalid message format")
+                                self.replaceTextFieldContent(with: trimmedText)
+                                
+                                // Ensure label stays hidden on success
+                                self.messagePreviewLabel?.isHidden = true
+                            } else {
+                                NSLog("[Write Mode] Failed to parse text from response")
+                                self.handleWriteError("Invalid response format")
                             }
                         } else {
-                            NSLog("[Write Mode] Failed to parse choices")
-                            self.handleWriteError("Invalid choices format")
+                            NSLog("[Write Mode] Failed to parse JSON")
+                            self.handleWriteError("Invalid JSON format")
                         }
-                    } else {
-                        NSLog("[Write Mode] Failed to parse JSON")
-                        self.handleWriteError("Invalid JSON format")
+                    } catch {
+                        NSLog("[Write Mode] JSON parsing error: \(error)")
+                        self.handleWriteError("Failed to parse response: \(error.localizedDescription)")
                     }
-                } catch {
-                    NSLog("[Write Mode] JSON parsing error: \(error)")
-                    self.handleWriteError("Failed to parse response: \(error.localizedDescription)")
-                }
             }
         }
 
         currentTask = task
+        NSLog("[Write Mode] Starting URLSession task (ID: \(task.taskIdentifier))")
         task.resume()
+        NSLog("[Write Mode] URLSession task.resume() called, task state should be active")
     }
 
     private func describeTone(_ value: Float) -> String {
@@ -1238,6 +1288,9 @@ class KeyboardViewController: UIInputViewController {
         NSLog("[KeyCoKeyboard] Write error: %@", message)
         messagePreviewLabel?.text = "Error: \(message)"
         messagePreviewLabel?.textColor = .systemRed
+        messagePreviewLabel?.isHidden = false
+        // Always clear loading state when there's an error
+        toneMapView?.setLoading(false)
     }
     
     private func replaceTextFieldContent(with newText: String) {
@@ -1319,24 +1372,19 @@ class KeyboardViewController: UIInputViewController {
 
         chatgptContentView.responseText = "Loading..."
 
-        // Make API request
-        guard let apiKey = chatGPTAPIKey else {
-            chatgptContentView.responseText = "Error: API key not configured. Please set it in Keychain."
+        // Call backend API instead of OpenAI directly
+        guard let url = BackendConfig.chatURL else {
+            chatgptContentView.responseText = "Error: Invalid backend URL. Please configure BackendConfig.baseURL"
             return
         }
         
-        let url = URL(string: "https://api.openai.com/v1/chat/completions")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 30
 
         let requestBody: [String: Any] = [
-            "model": "gpt-4",
-            "messages": [
-                ["role": "user", "content": query]
-            ],
-            "max_tokens": 500
+            "query": query
         ]
 
         guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else {
@@ -1361,23 +1409,28 @@ class KeyboardViewController: UIInputViewController {
                     return
                 }
 
+                // Check HTTP status
+                if let httpResponse = response as? HTTPURLResponse,
+                   httpResponse.statusCode < 200 || httpResponse.statusCode >= 300 {
+                    self.chatgptContentView.responseText = "Error: HTTP \(httpResponse.statusCode)"
+                    return
+                }
+
                 do {
-                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let choices = json["choices"] as? [[String: Any]],
-                       let firstChoice = choices.first,
-                       let message = firstChoice["message"] as? [String: Any],
-                       let content = message["content"] as? String {
-                        self.chatgptContentView.responseText = content.trimmingCharacters(in: .whitespacesAndNewlines)
-                    } else {
-                        // Try to parse error response
-                        if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                           let error = json["error"] as? [String: Any],
-                           let message = error["message"] as? String {
-                            self.chatgptContentView.responseText = "API Error: \(message)"
-                            NSLog("[KeyCo] ChatGPT API error: %@", message)
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        // Backend returns: { "text": "response text" }
+                        if let text = json["text"] as? String {
+                            self.chatgptContentView.responseText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        } else if let error = json["error"] as? String {
+                            // Check for error response
+                            let details = json["details"] as? String
+                            self.chatgptContentView.responseText = "API Error: \(details ?? error)"
+                            NSLog("[KeyCo] ChatGPT API error: %@", details ?? error)
                         } else {
                             self.chatgptContentView.responseText = "Error: Invalid response format"
                         }
+                    } else {
+                        self.chatgptContentView.responseText = "Error: Failed to parse response"
                     }
                 } catch {
                     self.chatgptContentView.responseText = "Error: Failed to parse response"
