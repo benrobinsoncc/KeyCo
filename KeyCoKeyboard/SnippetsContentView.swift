@@ -58,6 +58,10 @@ final class SnippetsContentView: UIView {
         tableView.verticalScrollIndicatorInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
         tableView.layoutMargins = .zero
         tableView.keyboardDismissMode = .onDrag
+        // Remove background in dark mode
+        tableView.backgroundColor = UIColor { trait in
+            trait.userInterfaceStyle == .dark ? .clear : UIColor.systemBackground
+        }
         addSubview(tableView)
 
         emptyLabel.text = "Add your first snippet"
@@ -81,6 +85,16 @@ final class SnippetsContentView: UIView {
             emptyLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
             emptyLabel.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
+    }
+    
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+            // Update table view background when switching between light/dark mode
+            tableView.backgroundColor = UIColor { trait in
+                trait.userInterfaceStyle == .dark ? .clear : UIColor.systemBackground
+            }
+        }
     }
 
     // No search; table shows all snippets
@@ -141,6 +155,11 @@ private final class Cell: UITableViewCell {
     }
 
     private func setup() {
+        // Remove background in dark mode
+        backgroundColor = UIColor { trait in
+            trait.userInterfaceStyle == .dark ? .clear : UIColor.systemBackground
+        }
+        
         titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         titleLabel.numberOfLines = 1
         previewLabel.font = .systemFont(ofSize: 13, weight: .regular)
@@ -170,8 +189,26 @@ private final class Cell: UITableViewCell {
         preservesSuperviewLayoutMargins = false
         layoutMargins = .zero
         separatorInset = .zero
+        
+        // Remove content view background in dark mode
+        contentView.backgroundColor = UIColor { trait in
+            trait.userInterfaceStyle == .dark ? .clear : UIColor.systemBackground
+        }
 
         // No context menu; host app will manage snippet actions
+    }
+    
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+            // Update background colors when switching between light/dark mode
+            backgroundColor = UIColor { trait in
+                trait.userInterfaceStyle == .dark ? .clear : UIColor.systemBackground
+            }
+            contentView.backgroundColor = UIColor { trait in
+                trait.userInterfaceStyle == .dark ? .clear : UIColor.systemBackground
+            }
+        }
     }
 
     @objc private func insertTapped() { onInsert?() }

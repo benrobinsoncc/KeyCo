@@ -240,22 +240,27 @@ class KeyboardViewController: UIInputViewController {
         ])
 
         // Create 2x2 grid of buttons (Write/Snippets on top, Google/ChatGPT bottom)
-        let spacing: CGFloat = 8
+        let spacing: CGFloat = 6
         let padding: CGFloat = 3
 
-        let writeButton = createActionButton(title: "Write", color: .white)
+        // Use dynamic color that matches the selector background (same as action bar background)
+        let tileColor = UIColor { trait in
+            trait.userInterfaceStyle == .dark ? UIColor.secondarySystemBackground : UIColor.systemBackground
+        }
+        
+        let writeButton = createActionButton(title: "Write", color: tileColor)
         writeButton.addTarget(self, action: #selector(writeTapped), for: .touchUpInside)
         homeView.addSubview(writeButton)
 
-        let snippetsButton = createActionButton(title: "Paste", color: .white)
+        let snippetsButton = createActionButton(title: "Paste", color: tileColor)
         snippetsButton.addTarget(self, action: #selector(snippetsTapped), for: .touchUpInside)
         homeView.addSubview(snippetsButton)
 
-        let googleButton = createActionButton(title: "Google", color: .white)
+        let googleButton = createActionButton(title: "Google", color: tileColor)
         googleButton.addTarget(self, action: #selector(googleTapped), for: .touchUpInside)
         homeView.addSubview(googleButton)
 
-        let chatgptButton = createActionButton(title: "ChatGPT", color: .white)
+        let chatgptButton = createActionButton(title: "ChatGPT", color: tileColor)
         chatgptButton.addTarget(self, action: #selector(chatgptTapped), for: .touchUpInside)
         homeView.addSubview(chatgptButton)
 
@@ -293,9 +298,12 @@ class KeyboardViewController: UIInputViewController {
 
     private func createActionButton(title: String, color: UIColor) -> UIButton {
         let button = UIButton(type: .system)
-        button.setTitle(title, for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
+        // Uppercase title to match CHATGPT header style
+        button.setTitle(title.uppercased(), for: .normal)
+        // Match CHATGPT header font (13pt, semibold)
+        button.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
         button.backgroundColor = color
+        // Black text color
         button.setTitleColor(.label, for: .normal)
         button.layer.cornerRadius = 16
         button.translatesAutoresizingMaskIntoConstraints = false

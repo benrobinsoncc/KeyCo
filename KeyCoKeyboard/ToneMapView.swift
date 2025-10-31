@@ -71,31 +71,36 @@ final class ToneMapView: UIView {
         // Make sure the view can receive touches
         isUserInteractionEnabled = true
         
-        // Setup gradient background - sophisticated color transitions
-        // Top-left (Detailed/Friendly): Soft blue-teal
-        // Top-right (Detailed/Formal): Cool purple-blue
-        // Bottom-left (Brief/Friendly): Warm coral-pink
-        // Bottom-right (Brief/Formal): Muted slate-grey
-        gradientLayer.colors = [
-            UIColor.systemTeal.withAlphaComponent(0.25).cgColor,           // Top-left: Friendly & Detailed
-            UIColor.systemIndigo.withAlphaComponent(0.25).cgColor,        // Top-right: Formal & Detailed
-            UIColor.systemPink.withAlphaComponent(0.28).cgColor,           // Bottom-left: Friendly & Brief
-            UIColor.systemGray.withAlphaComponent(0.22).cgColor            // Bottom-right: Formal & Brief
-        ]
-        gradientLayer.locations = [0.0, 0.33, 0.67, 1.0]
-        gradientLayer.startPoint = CGPoint(x: 0, y: 0)
-        gradientLayer.endPoint = CGPoint(x: 1, y: 1)
-        layer.addSublayer(gradientLayer)
+        // Match action bar button background color
+        // Same grey as buttons in ActionContainerView
+        backgroundColor = UIColor { trait in
+            trait.userInterfaceStyle == .dark ? UIColor.tertiarySystemBackground : UIColor.secondarySystemBackground
+        }
         
-        // Setup grid lines - subtle, refined appearance
-        gridLayer.strokeColor = UIColor.label.withAlphaComponent(0.12).cgColor
+        // Optional: Ultra-subtle gradient for minimal depth (disabled to match buttons)
+        // Uncomment below if you want a very subtle gradient overlay
+        // gradientLayer.colors = [
+        //     UIColor.systemGray6.cgColor,
+        //     UIColor.systemGray5.cgColor
+        // ]
+        // gradientLayer.startPoint = CGPoint(x: 0, y: 0)
+        // gradientLayer.endPoint = CGPoint(x: 1, y: 1)
+        // gradientLayer.opacity = 0.2
+        // layer.addSublayer(gradientLayer)
+        
+        // Grid lines - visible in both light and dark mode
+        // More visible in dark mode for better contrast
+        updateGridColor()
         gridLayer.lineWidth = 0.5
         gridLayer.fillColor = UIColor.clear.cgColor
-        gridLayer.lineDashPattern = [3, 2] // Subtle dashed pattern for elegance
+        // Solid lines for cleaner minimal look (removed dashed pattern)
         layer.addSublayer(gridLayer)
         
         // Setup selector - modern, elevated appearance
-        selector.backgroundColor = .systemBackground
+        // Match action bar background color (darker than buttons)
+        selector.backgroundColor = UIColor { trait in
+            trait.userInterfaceStyle == .dark ? UIColor.secondarySystemBackground : UIColor.systemBackground
+        }
         selector.layer.cornerRadius = selectorSize / 2
         // More subtle, modern shadow
         selector.layer.shadowColor = UIColor.black.cgColor
@@ -160,6 +165,29 @@ final class ToneMapView: UIView {
     
     private var panGestureRecognizer: UIPanGestureRecognizer?
     
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+            // Update grid color when switching between light/dark mode
+            updateGridColor()
+            // Update selector background to match action bar background color
+            selector.backgroundColor = UIColor { trait in
+                trait.userInterfaceStyle == .dark ? UIColor.secondarySystemBackground : UIColor.systemBackground
+            }
+        }
+    }
+    
+    private func updateGridColor() {
+        // More visible in dark mode, subtle in light mode
+        if traitCollection.userInterfaceStyle == .dark {
+            // Dark mode: more visible with higher opacity
+            gridLayer.strokeColor = UIColor.separator.withAlphaComponent(0.4).cgColor
+        } else {
+            // Light mode: subtle but visible
+            gridLayer.strokeColor = UIColor.separator.withAlphaComponent(0.15).cgColor
+        }
+    }
+    
     override func layoutSubviews() {
         super.layoutSubviews()
         gradientLayer.frame = bounds
@@ -177,6 +205,9 @@ final class ToneMapView: UIView {
     
     private func updateGridLines() {
         guard bounds.width > 0, bounds.height > 0 else { return }
+        
+        // Update grid color when redrawing to match current mode
+        updateGridColor()
         
         let path = UIBezierPath()
         
