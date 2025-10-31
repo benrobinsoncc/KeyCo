@@ -8,6 +8,12 @@ class KeychainHelper {
     private static let service = "com.keyco.keyboard"
     private static let apiKeyKey = "chatgpt_api_key"
     
+    // Keychain Access Group for sharing between app and extension
+    // Must match the entitlements: $(AppIdentifierPrefix)group.com.keyco
+    // At runtime, this is expanded to: F8ZMT5492T.group.com.keyco
+    // Using hardcoded Team ID from project settings
+    private static let accessGroup = "F8ZMT5492T.group.com.keyco"
+    
     /// Stores an API key securely in the Keychain
     /// - Parameter key: The API key to store
     /// - Returns: True if storage was successful, false otherwise
@@ -21,13 +27,15 @@ class KeychainHelper {
         // Delete existing item first (if it exists)
         deleteAPIKey()
         
-        let query: [String: Any] = [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: apiKeyKey,
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         ]
+        
+        // DON'T specify access group - let iOS use the one from entitlements automatically
         
         let status = SecItemAdd(query as CFDictionary, nil)
         
@@ -43,7 +51,7 @@ class KeychainHelper {
     /// Retrieves the stored API key from the Keychain
     /// - Returns: The API key if found, nil otherwise
     static func retrieveAPIKey() -> String? {
-        let query: [String: Any] = [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: apiKeyKey,
@@ -51,18 +59,29 @@ class KeychainHelper {
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
         
+        // DON'T specify access group - let iOS use the one from entitlements automatically
+        // This matches how the app stores it (without explicit access group)
+        
+        NSLog("[KeychainHelper] [Extension] Retrieving API key (using access group from entitlements)")
+        NSLog("[KeychainHelper] Service: \(service), Account: \(apiKeyKey)")
+        NSLog("[KeychainHelper] Bundle ID: \(Bundle.main.bundleIdentifier ?? "nil")")
+        
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
+        
+        NSLog("[KeychainHelper] Status code: \(status) (errSecSuccess=0, errSecItemNotFound=-25300, errSecNoAccessForItem=-25243)")
+        NSLog("[KeychainHelper] Has result: \(result != nil)")
         
         if status == errSecSuccess,
            let data = result as? Data,
            let apiKey = String(data: data, encoding: .utf8) {
+            NSLog("[KeychainHelper] ✅ API key retrieved successfully")
             return apiKey
         } else {
             if status == errSecItemNotFound {
-                NSLog("[KeychainHelper] API key not found in Keychain")
+                NSLog("[KeychainHelper] ❌ API key not found in Keychain (status: \(status))")
             } else {
-                NSLog("[KeychainHelper] Failed to retrieve API key: \(status)")
+                NSLog("[KeychainHelper] ❌ Failed to retrieve API key - Status: \(status)")
             }
             return nil
         }
@@ -72,11 +91,13 @@ class KeychainHelper {
     /// - Returns: True if deletion was successful, false otherwise
     @discardableResult
     static func deleteAPIKey() -> Bool {
-        let query: [String: Any] = [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: apiKeyKey
         ]
+        
+        // DON'T specify access group - let iOS use the one from entitlements automatically
         
         let status = SecItemDelete(query as CFDictionary)
         
