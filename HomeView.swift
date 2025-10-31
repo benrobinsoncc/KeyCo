@@ -18,6 +18,28 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
+                    // Status Card at top
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Keyboard Copilot")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundStyle(Color(uiColor: .label))
+                            
+                            Text(isKeyboardActive ? "Active" : "Inactive")
+                                .font(.subheadline)
+                                .foregroundStyle(isKeyboardActive ? .green : .orange)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    
                     // Setup Section - 2 cards side by side
                     VStack(alignment: .leading, spacing: 0) {
                         Text("Setup")
@@ -114,26 +136,8 @@ struct HomeView: View {
                 .padding(.bottom, 20)
             }
             .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("Keyboard Copilot")
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Button(action: {}) {
-                        HStack(spacing: 4) {
-                            Image(systemName: isKeyboardActive ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                            Text(isKeyboardActive ? "Active" : "Inactive")
-                        }
-                        .font(.subheadline)
-                        .foregroundStyle(isKeyboardActive ? .green : .orange)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            Capsule()
-                                .fill(isKeyboardActive ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
-                        )
-                    }
-                    .disabled(true)
-                }
-            }
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingSnippets) {
                 SnippetsManagementView()
             }
