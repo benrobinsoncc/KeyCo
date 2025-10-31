@@ -90,8 +90,10 @@ secrets.plist
 # Config files with API keys (do not commit)
 KeyCo/Config.swift
 
-# Backend environment variables
+# Backend environment variables and dependencies
 .env
 .env.local
 .env.*.local
 .vercel
+node_modules/
+package-lock.json
