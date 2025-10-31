@@ -104,7 +104,7 @@ class KeyboardViewController: UIInputViewController {
         NotificationCenter.default.removeObserver(self)
         // Remove Darwin notification observer
         let notificationCenter = CFNotificationCenterGetDarwinNotifyCenter()
-        let notificationName = SnippetsStore.snippetsUpdatedNotification.rawValue as CFString
+        let notificationName = CFNotificationName(SnippetsStore.snippetsUpdatedNotification.rawValue as CFString)
         CFNotificationCenterRemoveObserver(
             notificationCenter,
             Unmanaged.passUnretained(self).toOpaque(),
