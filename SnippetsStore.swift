@@ -9,12 +9,13 @@ struct Snippet: Codable, Equatable, Identifiable {
 }
 
 /// Lightweight local store for snippets. Backed by UserDefaults with an in-memory cache.
-final class SnippetsStore {
+final class SnippetsStore: ObservableObject {
     static let shared = SnippetsStore()
+    
+    @Published private(set) var snippets: [Snippet] = []
 
     private let storageKey = "KeyCo_Snippets_v1"
     private let userDefaults: UserDefaults
-    private var cache: [Snippet] = []
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
@@ -34,7 +35,7 @@ final class SnippetsStore {
 
     func getAll() -> [Snippet] {
         // Preserve insertion order; no automatic resorting
-        return cache
+        return snippets
     }
 
     func search(_ query: String) -> [Snippet] {
@@ -42,37 +43,37 @@ final class SnippetsStore {
         guard !trimmed.isEmpty else { return getAll() }
         let lower = trimmed.lowercased()
         // Preserve original order; no sorting
-        return cache.filter { $0.title.lowercased().contains(lower) || $0.text.lowercased().contains(lower) }
+        return snippets.filter { $0.title.lowercased().contains(lower) || $0.text.lowercased().contains(lower) }
     }
 
     @discardableResult
     func add(title: String, text: String, pinned: Bool = false) -> Snippet {
         let item = Snippet(id: UUID(), title: title, text: text, pinned: pinned, lastUsed: nil)
-        cache.append(item)
+        snippets.append(item)
         persist()
         return item
     }
 
     func rename(id: UUID, newTitle: String) {
-        guard let index = cache.firstIndex(where: { $0.id == id }) else { return }
-        cache[index].title = newTitle
+        guard let index = snippets.firstIndex(where: { $0.id == id }) else { return }
+        snippets[index].title = newTitle
         persist()
     }
 
     func updateText(id: UUID, newText: String) {
-        guard let index = cache.firstIndex(where: { $0.id == id }) else { return }
-        cache[index].text = newText
+        guard let index = snippets.firstIndex(where: { $0.id == id }) else { return }
+        snippets[index].text = newText
         persist()
     }
 
     func togglePin(id: UUID) {
-        guard let index = cache.firstIndex(where: { $0.id == id }) else { return }
-        cache[index].pinned.toggle()
+        guard let index = snippets.firstIndex(where: { $0.id == id }) else { return }
+        snippets[index].pinned.toggle()
         persist()
     }
 
     func delete(id: UUID) {
-        cache.removeAll { $0.id == id }
+        snippets.removeAll { $0.id == id }
         persist()
     }
 
@@ -82,29 +83,29 @@ final class SnippetsStore {
 
     private func load() {
         guard let data = userDefaults.data(forKey: storageKey) else {
-            cache = []
+            snippets = []
             return
         }
         do {
-            cache = try decoder.decode([Snippet].self, from: data)
+            snippets = try decoder.decode([Snippet].self, from: data)
         } catch {
             // Corrupt data; reset
-            cache = []
+            snippets = []
         }
     }
 
     private func persist() {
         do {
-            let data = try encoder.encode(cache)
+            let data = try encoder.encode(snippets)
             userDefaults.set(data, forKey: storageKey)
             userDefaults.synchronize()
         } catch {
-            // Ignore persist errors in extension context
+            // Ignore persist errors
         }
     }
 
     private func seedDefaultsIfNeeded() {
-        guard cache.isEmpty else { return }
+        guard snippets.isEmpty else { return }
         var seeded: [Snippet] = []
         func make(_ title: String, _ text: String, _ pinned: Bool = false) {
             seeded.append(Snippet(id: UUID(), title: title, text: text, pinned: pinned, lastUsed: nil))
@@ -115,9 +116,9 @@ final class SnippetsStore {
         make("Website", "https://www.benrobinson.cc")
         make("Phone", "+44 0000 000000")
         make("Address", "123 Example Street, London, UK")
-        make("Not interested", "Thanks for reaching out. I’m not interested in this role right now.")
+        make("Not interested", "Thanks for reaching out. I'm not interested in this role right now.")
 
-        cache = seeded
+        snippets = seeded
         persist()
     }
 

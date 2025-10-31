@@ -16,6 +16,8 @@
 		524ADCE42EAD2A3800DE2382 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCCC2EAD2A3800DE2382 /* AppState.swift */; };
 		524ADCEE2EB3FC8000DE2382 /* SnippetsContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCEC2EB3FC8000DE2382 /* SnippetsContentView.swift */; };
 		524ADCEF2EB3FC8000DE2382 /* SnippetsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCED2EB3FC8000DE2382 /* SnippetsStore.swift */; };
+		524ADCF22EB5255000DE2382 /* SnippetsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCF12EB5255000DE2382 /* SnippetsStore.swift */; };
+		524ADCF32EB5255000DE2382 /* SnippetsManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCF02EB5255000DE2382 /* SnippetsManagementView.swift */; };
 		52E5DE7A2EA94A510021BC48 /* Shimmer in Frameworks */ = {isa = PBXBuildFile; productRef = 52E5DE792EA94A510021BC48 /* Shimmer */; };
 		52E5DE7C2EA94A5D0021BC48 /* Shimmer in Frameworks */ = {isa = PBXBuildFile; productRef = 52E5DE7B2EA94A5D0021BC48 /* Shimmer */; };
 		52E5DE7F2EA969970021BC48 /* AnimateText in Frameworks */ = {isa = PBXBuildFile; productRef = 52E5DE7E2EA969970021BC48 /* AnimateText */; };
@@ -66,6 +68,8 @@
 		524ADCD52EAD2A3800DE2382 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		524ADCEC2EB3FC8000DE2382 /* SnippetsContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetsContentView.swift; sourceTree = "<group>"; };
 		524ADCED2EB3FC8000DE2382 /* SnippetsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetsStore.swift; sourceTree = "<group>"; };
+		524ADCF02EB5255000DE2382 /* SnippetsManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetsManagementView.swift; sourceTree = "<group>"; };
+		524ADCF12EB5255000DE2382 /* SnippetsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetsStore.swift; sourceTree = "<group>"; };
 		A1000002000000000000001 /* KeyCoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCoApp.swift; sourceTree = "<group>"; };
 		A1000004000000000000001 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A1000006000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -142,6 +146,8 @@
 		A1000021000000000000001 = {
 			isa = PBXGroup;
 			children = (
+				524ADCF02EB5255000DE2382 /* SnippetsManagementView.swift */,
+				524ADCF12EB5255000DE2382 /* SnippetsStore.swift */,
 				524ADCC22EAD2A3800DE2382 /* AppDelegate.swift */,
 				524ADCC52EAD2A3800DE2382 /* Components */,
 				524ADCC72EAD2A3800DE2382 /* Home */,
@@ -315,6 +321,8 @@
 				524ADCE02EAD2A3800DE2382 /* MailComposeView.swift in Sources */,
 				524ADCE22EAD2A3800DE2382 /* HomeView.swift in Sources */,
 				524ADCE32EAD2A3800DE2382 /* WelcomeView.swift in Sources */,
+				524ADCF22EB5255000DE2382 /* SnippetsStore.swift in Sources */,
+				524ADCF32EB5255000DE2382 /* SnippetsManagementView.swift in Sources */,
 				524ADCE42EAD2A3800DE2382 /* AppState.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
