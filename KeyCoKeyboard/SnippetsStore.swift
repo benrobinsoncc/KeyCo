@@ -12,6 +12,8 @@ struct Snippet: Codable, Equatable, Identifiable {
 final class SnippetsStore: ObservableObject {
     static let shared = SnippetsStore()
     
+    static let snippetsUpdatedNotification = Notification.Name("com.keyco.snippets.updated")
+    
     @Published private(set) var snippets: [Snippet] = []
 
     private let storageKey = "KeyCo_Snippets_v1"
@@ -99,6 +101,16 @@ final class SnippetsStore: ObservableObject {
             let data = try encoder.encode(snippets)
             userDefaults.set(data, forKey: storageKey)
             userDefaults.synchronize()
+            
+            // Post Darwin notification to sync between host app and keyboard extension
+            let notification = CFNotificationCenterGetDarwinNotifyCenter()
+            CFNotificationCenterPostNotification(
+                notification,
+                CFNotificationName(rawValue: Self.snippetsUpdatedNotification.rawValue as CFString),
+                nil,
+                nil,
+                true
+            )
         } catch {
             // Ignore persist errors
         }

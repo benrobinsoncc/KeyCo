@@ -80,10 +80,35 @@ class KeyboardViewController: UIInputViewController {
             name: UIApplication.didBecomeActiveNotification,
             object: nil
         )
+        
+        // Add Darwin notification observer for snippet updates
+        let notificationCenter = CFNotificationCenterGetDarwinNotifyCenter()
+        CFNotificationCenterAddObserver(
+            notificationCenter,
+            Unmanaged.passUnretained(self).toOpaque(),
+            { (center, observer, name, object, userInfo) in
+                guard let observer = observer else { return }
+                let instance = Unmanaged<KeyboardViewController>.fromOpaque(observer).takeUnretainedValue()
+                DispatchQueue.main.async {
+                    instance.reloadSnippets()
+                }
+            },
+            SnippetsStore.snippetsUpdatedNotification.rawValue as CFString,
+            nil,
+            .deliverImmediately
+        )
     }
     
     deinit {
         NotificationCenter.default.removeObserver(self)
+        // Remove Darwin notification observer
+        let notificationCenter = CFNotificationCenterGetDarwinNotifyCenter()
+        CFNotificationCenterRemoveObserver(
+            notificationCenter,
+            Unmanaged.passUnretained(self).toOpaque(),
+            SnippetsStore.snippetsUpdatedNotification.rawValue as CFString,
+            nil
+        )
     }
     
     @objc private func appDidBecomeActive() {
@@ -736,6 +761,9 @@ class KeyboardViewController: UIInputViewController {
     private func forceKeyboardRefresh() {
         NSLog("[KeyCo] Force refreshing keyboard extension")
         
+        // Reload snippets to get latest data
+        reloadSnippets()
+        
         // Force complete layout refresh
         let targetHeight = containerHeight(for: currentHeight)
         
@@ -768,6 +796,11 @@ class KeyboardViewController: UIInputViewController {
             
             NSLog("[KeyCo] Keyboard refresh completed")
         }
+    }
+    
+    private func reloadSnippets() {
+        NSLog("[KeyCo] Reloading snippets")
+        snippetsContentView?.reloadData()
     }
     
 
