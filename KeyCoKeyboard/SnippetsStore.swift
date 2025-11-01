@@ -25,9 +25,23 @@ final class SnippetsStore: ObservableObject {
         // Use App Group for shared storage between host app and extension
         if let appGroupDefaults = UserDefaults(suiteName: "group.com.keyco") {
             self.userDefaults = appGroupDefaults
+            // Force synchronize to ensure we can read/write
+            appGroupDefaults.synchronize()
+            NSLog("[SnippetsStore] ✅ Using App Group UserDefaults: group.com.keyco")
+            // Verify we can actually write to it
+            let testKey = "__keyco_test__"
+            appGroupDefaults.set("test", forKey: testKey)
+            if appGroupDefaults.string(forKey: testKey) == "test" {
+                appGroupDefaults.removeObject(forKey: testKey)
+                NSLog("[SnippetsStore] ✅ App Group UserDefaults is writable")
+            } else {
+                NSLog("[SnippetsStore] ⚠️ App Group UserDefaults write test failed!")
+            }
         } else {
             // Fallback to standard UserDefaults if App Group not configured yet
             self.userDefaults = userDefaults ?? .standard
+            NSLog("[SnippetsStore] ⚠️ App Group not available, using standard UserDefaults")
+            NSLog("[SnippetsStore] ⚠️ This means snippets won't sync between host app and extension!")
         }
         load()
         seedDefaultsIfNeeded()
@@ -81,16 +95,32 @@ final class SnippetsStore: ObservableObject {
 
     func markUsed(id: UUID) { /* intentionally no-op to keep ordering stable */ }
 
+    /// Reloads snippets from UserDefaults storage.
+    /// This should be called when receiving Darwin notifications that snippets have been updated
+    /// in another process (e.g., host app or another extension instance).
+    func reload() {
+        let oldCount = snippets.count
+        load()
+        let newCount = snippets.count
+        NSLog("[SnippetsStore] Reloaded snippets: \(oldCount) -> \(newCount) items")
+    }
+
     // MARK: - Private
 
     private func load() {
+        let suiteName = userDefaults == UserDefaults.standard ? "standard" : "group.com.keyco"
+        NSLog("[SnippetsStore] Loading snippets from UserDefaults suite: \(suiteName)")
         guard let data = userDefaults.data(forKey: storageKey) else {
+            NSLog("[SnippetsStore] No data found in UserDefaults for key: \(storageKey)")
             snippets = []
             return
         }
         do {
-            snippets = try decoder.decode([Snippet].self, from: data)
+            let loadedSnippets = try decoder.decode([Snippet].self, from: data)
+            NSLog("[SnippetsStore] Successfully loaded \(loadedSnippets.count) snippets from storage")
+            snippets = loadedSnippets
         } catch {
+            NSLog("[SnippetsStore] Error decoding snippets: \(error)")
             // Corrupt data; reset
             snippets = []
         }

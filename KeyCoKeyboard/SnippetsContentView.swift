@@ -33,6 +33,8 @@ final class SnippetsContentView: UIView {
 
     // MARK: - Public
     func reloadData() {
+        // Always reload from UserDefaults to get latest changes from host app
+        SnippetsStore.shared.reload()
         allSnippets = SnippetsStore.shared.getAll()
         emptyLabel.isHidden = !allSnippets.isEmpty
         tableView.reloadData()

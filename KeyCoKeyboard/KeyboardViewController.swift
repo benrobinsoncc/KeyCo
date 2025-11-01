@@ -100,13 +100,16 @@ class KeyboardViewController: UIInputViewController {
         // Add Darwin notification observer for snippet updates
         let notificationCenter = CFNotificationCenterGetDarwinNotifyCenter()
         let notificationName = SnippetsStore.snippetsUpdatedNotification.rawValue as CFString
+        NSLog("[KeyCo] Registering Darwin notification observer for: \(SnippetsStore.snippetsUpdatedNotification.rawValue)")
         CFNotificationCenterAddObserver(
             notificationCenter,
             Unmanaged.passUnretained(self).toOpaque(),
             { (center, observer, name, object, userInfo) in
                 guard let observer = observer else { return }
                 let instance = Unmanaged<KeyboardViewController>.fromOpaque(observer).takeUnretainedValue()
-                DispatchQueue.main.async {
+                NSLog("[KeyCo] Darwin notification received for snippet update")
+                // Small delay to allow UserDefaults to sync between processes
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     instance.reloadSnippets()
                 }
             },
@@ -154,6 +157,11 @@ class KeyboardViewController: UIInputViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         // Force refresh when view appears
+        // If we're in snippets mode, reload from storage to get latest changes
+        if currentMode == .snippets {
+            NSLog("[KeyCo] viewWillAppear - reloading snippets from storage")
+            SnippetsStore.shared.reload()
+        }
         DispatchQueue.main.async { [weak self] in
             self?.forceKeyboardRefresh()
         }
@@ -677,8 +685,7 @@ class KeyboardViewController: UIInputViewController {
     @objc private func snippetsTapped() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         switchToMode(.snippets, height: .small)
-        // Ensure latest data
-        snippetsContentView?.reloadData()
+        // Note: Reloading happens automatically in updateModeVisibility() when switching to snippets mode
     }
 
     // MARK: - Mode Management
@@ -739,6 +746,10 @@ class KeyboardViewController: UIInputViewController {
             chatgptView.alpha = 1
         case .snippets:
             snippetsView.alpha = 1
+            // Always reload snippets when showing snippets view to get latest from host app
+            NSLog("[KeyCo] Showing snippets view - reloading from storage")
+            SnippetsStore.shared.reload()
+            snippetsContentView?.reloadData()
         }
     }
 
@@ -827,8 +838,11 @@ class KeyboardViewController: UIInputViewController {
     private func forceKeyboardRefresh() {
         NSLog("[KeyCo] Force refreshing keyboard extension")
         
-        // Reload snippets to get latest data
-        reloadSnippets()
+        // Reload snippets to get latest data (only if in snippets mode or if switching to it)
+        if currentMode == .snippets {
+            SnippetsStore.shared.reload()
+            snippetsContentView?.reloadData()
+        }
         
         // Force complete layout refresh
         let targetHeight = containerHeight(for: currentHeight)
@@ -865,7 +879,11 @@ class KeyboardViewController: UIInputViewController {
     }
     
     private func reloadSnippets() {
-        NSLog("[KeyCo] Reloading snippets")
+        NSLog("[KeyCo] Reloading snippets from Darwin notification")
+        // Reload from UserDefaults to get latest changes from host app
+        SnippetsStore.shared.reload()
+        let count = SnippetsStore.shared.getAll().count
+        NSLog("[KeyCo] Loaded \(count) snippets from storage")
         snippetsContentView?.reloadData()
     }
     
