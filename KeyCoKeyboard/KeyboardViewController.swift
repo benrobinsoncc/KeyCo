@@ -39,6 +39,11 @@ class KeyboardViewController: UIInputViewController {
     private var snippetsContainer: ActionContainerView!
     private var googleWebView: WKWebView?
     private var currentGoogleURL: URL?
+    private var googleBackButton: UIButton?
+    private var googleForwardButton: UIButton?
+    private var googleNavigationTransitionView: UIView?
+    private var googleNavigationSnapshotView: UIView?
+    private var isGoogleNavigating: Bool = false
 
     // Write mode components
     private var toneMapView: ToneMapView!
@@ -474,13 +479,19 @@ class KeyboardViewController: UIInputViewController {
                 .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
                     self?.switchToMode(.home, height: .small)
                 }),
+                .init(style: .icon(symbolName: "arrow.left", accessibilityLabel: "Back"), action: { [weak self] in
+                    self?.goBackGoogle()
+                }),
+                .init(style: .icon(symbolName: "arrow.right", accessibilityLabel: "Forward"), action: { [weak self] in
+                    self?.goForwardGoogle()
+                }),
                 .init(style: .icon(symbolName: "arrow.clockwise", accessibilityLabel: "Reload"), action: { [weak self] in
                     self?.reloadGoogle()
                 }),
-                .init(style: .spacer),
-                .init(style: .text(title: "Open", symbolName: nil, isPrimary: false), action: { [weak self] in
+                .init(style: .icon(symbolName: "arrow.up.right.square", accessibilityLabel: "Open"), action: { [weak self] in
                     self?.openGoogleResult()
                 }),
+                .init(style: .spacer),
                 .init(style: .text(title: "Insert", symbolName: nil, isPrimary: false), action: { [weak self] in
                     self?.insertGoogleResult()
                 })
@@ -490,6 +501,16 @@ class KeyboardViewController: UIInputViewController {
         )
         googleView.addSubview(googleContainer)
         pinContainer(googleContainer, to: googleView)
+        
+        // Store references to navigation buttons for state updates
+        googleBackButton = googleContainer.getButton(accessibilityLabel: "Back")
+        googleForwardButton = googleContainer.getButton(accessibilityLabel: "Forward")
+        
+        // Add swipe gestures for navigation
+        setupGoogleWebViewGestures(webView)
+        
+        // Update initial button states
+        updateGoogleNavigationButtons()
     }
 
     private func setupChatGPTView() {
@@ -688,6 +709,7 @@ class KeyboardViewController: UIInputViewController {
         updateModeVisibility()
         if mode == .google {
             loadGoogleSearchFromContext()
+            updateGoogleNavigationButtons()
         }
         // Reset selector when leaving write mode (so it's ready when returning)
         if previousMode == .write && mode != .write {
@@ -908,6 +930,136 @@ class KeyboardViewController: UIInputViewController {
 
     // MARK: - Google Helpers
 
+    private func setupGoogleWebViewGestures(_ webView: WKWebView) {
+        // For now, let's simplify and just use simple swipe gestures
+        // Remove all gesture recognizers first to avoid conflicts
+        webView.gestureRecognizers?.forEach { webView.removeGestureRecognizer($0) }
+        
+        // Use simple swipe gestures
+        let swipeRightGesture = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipeRight))
+        swipeRightGesture.direction = .right
+        swipeRightGesture.numberOfTouchesRequired = 1
+        webView.addGestureRecognizer(swipeRightGesture)
+        
+        let swipeLeftGesture = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipeLeft))
+        swipeLeftGesture.direction = .left
+        swipeLeftGesture.numberOfTouchesRequired = 1
+        webView.addGestureRecognizer(swipeLeftGesture)
+    }
+    
+    @objc private func handleSwipeRight(_ gesture: UISwipeGestureRecognizer) {
+        NSLog("[KeyCo] Swipe right detected")
+        goBackGoogle()
+    }
+    
+    @objc private func handleSwipeLeft(_ gesture: UISwipeGestureRecognizer) {
+        NSLog("[KeyCo] Swipe left detected")
+        goForwardGoogle()
+    }
+    
+    private enum GoogleNavigationDirection {
+        case back
+        case forward
+    }
+    
+    private var googleNavigationDirection: GoogleNavigationDirection?
+    
+    private func startGoogleNavigationTransition(direction: GoogleNavigationDirection, webView: WKWebView) {
+        isGoogleNavigating = true
+        googleNavigationDirection = direction
+        
+        // Disable horizontal scrolling during transition
+        webView.scrollView.isScrollEnabled = false
+        
+        // Get the content container from ActionContainerView
+        guard let superview = webView.superview else { return }
+        
+        // Create snapshot of current view
+        let snapshot = webView.snapshotView(afterScreenUpdates: false) ?? UIView()
+        snapshot.frame = webView.bounds
+        superview.addSubview(snapshot)
+        googleNavigationSnapshotView = snapshot
+        
+        // Position webview off-screen initially (it will slide in as we drag)
+        let initialOffset = direction == .back ? -webView.bounds.width : webView.bounds.width
+        webView.transform = CGAffineTransform(translationX: initialOffset, y: 0)
+    }
+    
+    private func updateGoogleNavigationTransition(progress: CGFloat, translation: CGFloat) {
+        guard let snapshot = googleNavigationSnapshotView,
+              let webView = googleWebView,
+              let direction = googleNavigationDirection else { return }
+        
+        let normalizedProgress = min(max(progress, 0), 1)
+        
+        // Animate snapshot sliding out
+        snapshot.transform = CGAffineTransform(translationX: translation, y: 0)
+        
+        // Add subtle fade
+        snapshot.alpha = 1.0 - normalizedProgress * 0.3
+        
+        // Webview slides in from opposite side
+        let webviewOffset = direction == .back ? translation - webView.bounds.width : translation + webView.bounds.width
+        webView.transform = CGAffineTransform(translationX: webviewOffset, y: 0)
+    }
+    
+    private func completeGoogleNavigationTransition() {
+        guard let snapshot = googleNavigationSnapshotView,
+              let webView = googleWebView,
+              let direction = googleNavigationDirection else {
+            cleanupGoogleNavigationTransition()
+            return
+        }
+        
+        // Trigger navigation
+        if direction == .back {
+            webView.goBack()
+        } else {
+            webView.goForward()
+        }
+        
+        let width = webView.bounds.width
+        let finalOffset = direction == .back ? width : -width
+        
+        UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseOut], animations: {
+            snapshot.transform = CGAffineTransform(translationX: finalOffset, y: 0)
+            snapshot.alpha = 0
+            webView.transform = .identity
+        }) { _ in
+            self.updateGoogleNavigationButtons()
+            self.cleanupGoogleNavigationTransition()
+        }
+    }
+    
+    private func cancelGoogleNavigationTransition() {
+        guard let snapshot = googleNavigationSnapshotView,
+              let webView = googleWebView else {
+            cleanupGoogleNavigationTransition()
+            return
+        }
+        
+        UIView.animate(withDuration: 0.2, delay: 0, options: [.curveEaseOut], animations: {
+            snapshot.transform = .identity
+            snapshot.alpha = 1
+            webView.transform = .identity
+        }) { _ in
+            self.cleanupGoogleNavigationTransition()
+        }
+    }
+    
+    private func cleanupGoogleNavigationTransition() {
+        googleNavigationSnapshotView?.removeFromSuperview()
+        googleNavigationTransitionView?.removeFromSuperview()
+        googleNavigationSnapshotView = nil
+        googleNavigationTransitionView = nil
+        googleNavigationDirection = nil
+        isGoogleNavigating = false
+        
+        // Ensure webview transform is reset and scrolling is re-enabled
+        googleWebView?.transform = .identity
+        googleWebView?.scrollView.isScrollEnabled = true
+    }
+
     private func loadGoogleSearchFromContext() {
         guard let webView = googleWebView else { return }
         let query = currentDocumentText()
@@ -922,6 +1074,10 @@ class KeyboardViewController: UIInputViewController {
             loadGoogleSearchFromContext()
         } else {
             webView.reload()
+            // Update button states after reload
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.updateGoogleNavigationButtons()
+            }
         }
     }
 
@@ -981,6 +1137,38 @@ class KeyboardViewController: UIInputViewController {
     private func insertGoogleResult() {
         guard let url = googleWebView?.url ?? currentGoogleURL else { return }
         textDocumentProxy.insertText("\n\n\(url.absoluteString)")
+    }
+
+    private func goBackGoogle() {
+        guard let webView = googleWebView, webView.canGoBack else { return }
+        NSLog("[KeyCo] goBackGoogle called - canGoBack: \(webView.canGoBack)")
+        webView.goBack()
+        // Update button states after a short delay to ensure navigation state is updated
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.updateGoogleNavigationButtons()
+        }
+    }
+
+    private func goForwardGoogle() {
+        guard let webView = googleWebView, webView.canGoForward else { return }
+        NSLog("[KeyCo] goForwardGoogle called - canGoForward: \(webView.canGoForward)")
+        webView.goForward()
+        // Update button states after a short delay to ensure navigation state is updated
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.updateGoogleNavigationButtons()
+        }
+    }
+
+    private func updateGoogleNavigationButtons() {
+        DispatchQueue.main.async { [weak self] in
+            guard let webView = self?.googleWebView else {
+                self?.googleBackButton?.isEnabled = false
+                self?.googleForwardButton?.isEnabled = false
+                return
+            }
+            self?.googleBackButton?.isEnabled = webView.canGoBack
+            self?.googleForwardButton?.isEnabled = webView.canGoForward
+        }
     }
 
     private func currentDocumentText() -> String {
@@ -1419,6 +1607,41 @@ extension KeyboardViewController: WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         guard let storedWebView = googleWebView, webView === storedWebView else { return }
         currentGoogleURL = webView.url
+        // Update button states after navigation finishes
+        updateGoogleNavigationButtons()
+    }
+    
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        guard let storedWebView = googleWebView, webView === storedWebView else { return }
+        // Update button states when navigation starts
+        updateGoogleNavigationButtons()
+    }
+    
+    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        guard let storedWebView = googleWebView, webView === storedWebView else { return }
+        // Update button states when navigation commits (most reliable time)
+        updateGoogleNavigationButtons()
+    }
+    
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        guard let storedWebView = googleWebView, webView === storedWebView else { return }
+        // Update button states even if navigation fails
+        updateGoogleNavigationButtons()
+    }
+    
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        guard let storedWebView = googleWebView, webView === storedWebView else { return }
+        // Update button states even if provisional navigation fails
+        updateGoogleNavigationButtons()
+    }
+}
+
+// MARK: - UIGestureRecognizerDelegate
+
+extension KeyboardViewController: UIGestureRecognizerDelegate {
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        // Allow swipe gestures to work alongside webview scrolling
+        return true
     }
 }
 
