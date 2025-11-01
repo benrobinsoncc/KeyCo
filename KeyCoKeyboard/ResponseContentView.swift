@@ -28,11 +28,30 @@ final class ResponseContentView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupViews()
-        setupLayout()
 
         // Allow compression so we don't push action bar down
         setContentHuggingPriority(.defaultLow, for: .vertical)
         setContentCompressionResistancePriority(.defaultLow - 1, for: .vertical)
+    }
+    
+    private var hasSetupConstraints = false
+    private var hasLoggedLayout = false
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        // DEBUG: Log actual layout once per view lifecycle
+        if !hasLoggedLayout && frame.width > 0 && frame.height > 0 {
+            hasLoggedLayout = true
+            logLayoutFrames()
+        }
+    }
+    
+    override func updateConstraints() {
+        if !hasSetupConstraints {
+            hasSetupConstraints = true
+            setupLayout()
+        }
+        super.updateConstraints()
     }
 
     required init?(coder: NSCoder) {
@@ -43,14 +62,19 @@ final class ResponseContentView: UIView {
 
     private func setupViews() {
         backgroundColor = .clear
+        
+        // Ensure layout margins don't interfere (matching PASTE mode approach)
+        preservesSuperviewLayoutMargins = false
+        layoutMargins = .zero
 
-        // Setup title label (fixed, not scrollable)
+        // Setup title label (fixed, not scrollable) - matching PASTE mode style
         titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         titleLabel.textColor = .systemGray
         titleLabel.numberOfLines = 1
-        // Align text to top of label by removing baseline padding
-        titleLabel.baselineAdjustment = .alignBaselines
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        // CRITICAL: Minimize height to prevent extra vertical space
+        titleLabel.setContentHuggingPriority(.required, for: .vertical)
+        titleLabel.setContentCompressionResistancePriority(.required, for: .vertical)
         addSubview(titleLabel)
 
         // Setup response container directly (no scroll view - let parent handle scrolling)
@@ -66,27 +90,64 @@ final class ResponseContentView: UIView {
         responseContainer.addSubview(hosting.view)
     }
 
+    private var hostingViewConstraintsSet = false
+    
     private func setupLayout() {
-        guard let hostingView = hostingController?.view else { return }
-
-        NSLayoutConstraint.activate([
-            // Title label at the very top - offset up by ~3pt to compensate for UILabel's text baseline padding
-            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: -3),
-            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor),
-            titleLabel.trailingAnchor.constraint(equalTo: trailingAnchor),
-
-            // Response container directly below title - add back the offset so spacing is correct
-            responseContainer.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 3),
-            responseContainer.leadingAnchor.constraint(equalTo: leadingAnchor),
-            responseContainer.trailingAnchor.constraint(equalTo: trailingAnchor),
-            responseContainer.bottomAnchor.constraint(equalTo: bottomAnchor),
-
-            // SwiftUI hosting view fills the container
-            hostingView.topAnchor.constraint(equalTo: responseContainer.topAnchor),
-            hostingView.leadingAnchor.constraint(equalTo: responseContainer.leadingAnchor),
-            hostingView.trailingAnchor.constraint(equalTo: responseContainer.trailingAnchor),
-            hostingView.bottomAnchor.constraint(equalTo: responseContainer.bottomAnchor)
-        ])
+        // Set up title label constraints first (matching PASTE mode exactly)
+        // CRITICAL: Constrain height to font line height to prevent extra vertical space
+        let font = titleLabel.font ?? .systemFont(ofSize: 13, weight: .semibold)
+        let lineHeight = font.lineHeight
+        let titleHeight = titleLabel.heightAnchor.constraint(equalToConstant: lineHeight)
+        let titleTop = titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 14)
+        let titleLeading = titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor)
+        let titleTrailing = titleLabel.trailingAnchor.constraint(equalTo: trailingAnchor)
+        
+        titleHeight.isActive = true
+        titleTop.isActive = true
+        titleLeading.isActive = true
+        titleTrailing.isActive = true
+        
+        // Set up response container constraints (matching PASTE mode spacing)
+        // CRITICAL: Ensure responseContainer fills remaining space to push header up
+        let responseTop = responseContainer.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 6)
+        let responseLeading = responseContainer.leadingAnchor.constraint(equalTo: leadingAnchor)
+        let responseTrailing = responseContainer.trailingAnchor.constraint(equalTo: trailingAnchor)
+        let responseBottom = responseContainer.bottomAnchor.constraint(equalTo: bottomAnchor)
+        
+        responseTop.isActive = true
+        responseLeading.isActive = true
+        responseTrailing.isActive = true
+        responseBottom.isActive = true
+        
+        // DEBUG: Log constraint setup
+        NSLog("[ResponseContentView] Constraints set - titleLabel top: 14pt, responseContainer top: titleLabel.bottom + 6pt")
+        
+        // Set up hosting view constraints when available
+        if let hostingView = hostingController?.view, !hostingViewConstraintsSet {
+            hostingView.topAnchor.constraint(equalTo: responseContainer.topAnchor).isActive = true
+            hostingView.leadingAnchor.constraint(equalTo: responseContainer.leadingAnchor).isActive = true
+            hostingView.trailingAnchor.constraint(equalTo: responseContainer.trailingAnchor).isActive = true
+            hostingView.bottomAnchor.constraint(equalTo: responseContainer.bottomAnchor).isActive = true
+            hostingViewConstraintsSet = true
+        }
+        
+        // DEBUG: Schedule layout logging after layout
+        DispatchQueue.main.async { [weak self] in
+            self?.logLayoutFrames()
+        }
+    }
+    
+    private func logLayoutFrames() {
+        NSLog("[ResponseContentView] === LAYOUT DEBUG ===")
+        NSLog("[ResponseContentView] Self frame: \(frame)")
+        NSLog("[ResponseContentView] titleLabel frame: \(titleLabel.frame)")
+        NSLog("[ResponseContentView] titleLabel height: \(titleLabel.frame.height)pt (font lineHeight: \(titleLabel.font.lineHeight)pt)")
+        NSLog("[ResponseContentView] responseContainer frame: \(responseContainer.frame)")
+        NSLog("[ResponseContentView] titleLabel top: \(titleLabel.frame.minY - frame.minY)pt from self.top")
+        NSLog("[ResponseContentView] responseContainer top: \(responseContainer.frame.minY - frame.minY)pt from self.top")
+        NSLog("[ResponseContentView] responseContainer height: \(responseContainer.frame.height)pt")
+        NSLog("[ResponseContentView] Available space: \(frame.height - titleLabel.frame.maxY - 6)pt")
+        NSLog("[ResponseContentView] ====================")
     }
 
     // MARK: - Update
@@ -101,6 +162,17 @@ final class ResponseContentView: UIView {
             id: UUID()
         )
         hostingController?.rootView = newView
+
+        // Ensure hosting view constraints are set up if they weren't before
+        if let hostingView = hostingController?.view,
+           hostingView.superview == responseContainer,
+           !hostingViewConstraintsSet {
+            hostingView.topAnchor.constraint(equalTo: responseContainer.topAnchor).isActive = true
+            hostingView.leadingAnchor.constraint(equalTo: responseContainer.leadingAnchor).isActive = true
+            hostingView.trailingAnchor.constraint(equalTo: responseContainer.trailingAnchor).isActive = true
+            hostingView.bottomAnchor.constraint(equalTo: responseContainer.bottomAnchor).isActive = true
+            hostingViewConstraintsSet = true
+        }
 
         // Force layout update
         hostingController?.view.setNeedsLayout()
