@@ -54,6 +54,7 @@ class KeyboardViewController: UIInputViewController {
 
     // ChatGPT content view
     private var chatgptContentView: ResponseContentView!
+    private var chatgptCopyButton: UIButton?
     private var snippetsContentView: SnippetsContentView!
 
     private let containerMargin: CGFloat = 3
@@ -532,6 +533,7 @@ class KeyboardViewController: UIInputViewController {
         )
         chatgptView.addSubview(chatgptContainer)
         pinContainer(chatgptContainer, to: chatgptView)
+        chatgptCopyButton = chatgptContainer.getButton(accessibilityLabel: "Copy")
     }
 
     private func setupSnippetsView() {
@@ -1305,12 +1307,103 @@ class KeyboardViewController: UIInputViewController {
     private func reloadChatGPT() {
         queryChatGPT()
     }
+    
+    private func createColoredSymbolImage(systemName: String, color: UIColor, pointSize: CGFloat = 12, weight: UIImage.SymbolWeight = .semibold) -> UIImage? {
+        let config = UIImage.SymbolConfiguration(pointSize: pointSize, weight: weight)
+        guard let templateImage = UIImage(systemName: systemName, withConfiguration: config)?.withRenderingMode(.alwaysTemplate) else {
+            return nil
+        }
+        
+        // Render the image with the specified color
+        let renderer = UIGraphicsImageRenderer(size: templateImage.size)
+        return renderer.image { context in
+            color.set()
+            templateImage.draw(in: CGRect(origin: .zero, size: templateImage.size))
+        }.withRenderingMode(.alwaysOriginal)
+    }
 
     private func copyChatGPTOutput() {
         let text = chatgptContentView.responseText
         guard !text.isEmpty, text != "Loading...", !text.hasPrefix("Error:") else { return }
+        
+        guard let button = chatgptCopyButton, button.isEnabled else { return }
+        
         UIPasteboard.general.string = text
         NSLog("[KeyCo] Copied ChatGPT output to clipboard")
+        
+        // Disable button and keep tint color black
+        button.isEnabled = false
+        button.tintColor = .label
+        
+        // Store reference to imageView
+        guard let imageView = button.imageView else { return }
+        
+        // Create checkmark image with black color baked in
+        let checkmarkImage = createColoredSymbolImage(systemName: "checkmark", color: .label)
+        
+        // Smooth SF Symbols-style animation: scale down + fade out
+        UIView.animate(withDuration: 0.15, delay: 0, options: [.curveEaseIn], animations: {
+            imageView.transform = CGAffineTransform(scaleX: 0.3, y: 0.3)
+            imageView.alpha = 0.0
+        }) { _ in
+            // Change icon without animation
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            button.setImage(checkmarkImage, for: .normal)
+            button.setImage(checkmarkImage, for: .disabled)
+            button.tintColor = .label
+            CATransaction.commit()
+            
+            // Get fresh reference and set initial state
+            if let newImageView = button.imageView {
+                newImageView.transform = CGAffineTransform(scaleX: 0.3, y: 0.3)
+                newImageView.alpha = 0.0
+                
+                // Scale up + fade in with spring animation
+                UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.5, options: [.curveEaseOut], animations: {
+                    newImageView.transform = .identity
+                    newImageView.alpha = 1.0
+                })
+            }
+        }
+        
+        // After delay, animate back to copy icon
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { [weak self] in
+            guard let button = self?.chatgptCopyButton else { return }
+            guard let self = self else { return }
+            guard let imageView = button.imageView else { return }
+            
+            // Create copy image with black color baked in
+            let copyImage = self.createColoredSymbolImage(systemName: "doc.on.doc", color: .label)
+            
+            // Smooth animation back: scale down + fade out
+            UIView.animate(withDuration: 0.15, delay: 0, options: [.curveEaseIn], animations: {
+                imageView.transform = CGAffineTransform(scaleX: 0.3, y: 0.3)
+                imageView.alpha = 0.0
+            }) { _ in
+                // Change icon without animation
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                button.setImage(copyImage, for: .normal)
+                button.setImage(copyImage, for: .disabled)
+                button.tintColor = .label
+                CATransaction.commit()
+                
+                // Get fresh reference and set initial state
+                if let newImageView = button.imageView {
+                    newImageView.transform = CGAffineTransform(scaleX: 0.3, y: 0.3)
+                    newImageView.alpha = 0.0
+                    
+                    // Scale up + fade in with spring animation
+                    UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.5, options: [.curveEaseOut], animations: {
+                        newImageView.transform = .identity
+                        newImageView.alpha = 1.0
+                    }) { _ in
+                        button.isEnabled = true
+                    }
+                }
+            }
+        }
     }
 
     private func insertChatGPTOutput() {

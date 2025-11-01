@@ -349,6 +349,13 @@ final class ActionContainerView: UIView {
         let symbolName = expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right"
         toggleButton.setImage(UIImage(systemName: symbolName), for: .normal)
     }
+    
+    func getButton(accessibilityLabel: String) -> UIButton? {
+        return buttonStack.arrangedSubviews.compactMap { view in
+            guard let button = view as? UIButton else { return nil }
+            return button.accessibilityLabel == accessibilityLabel ? button : nil
+        }.first
+    }
 
     // MARK: - Actions
 
