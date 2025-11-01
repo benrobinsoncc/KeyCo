@@ -93,7 +93,8 @@ final class ToneMapView: UIView {
         updateGridColor()
         gridLayer.lineWidth = 0.5
         gridLayer.fillColor = UIColor.clear.cgColor
-        // Solid lines for cleaner minimal look (removed dashed pattern)
+        // Dotted pattern for grid lines
+        gridLayer.lineDashPattern = [2, 2]
         layer.addSublayer(gridLayer)
         
         // Setup selector - modern, elevated appearance
@@ -181,10 +182,10 @@ final class ToneMapView: UIView {
         // More visible in dark mode, subtle in light mode
         if traitCollection.userInterfaceStyle == .dark {
             // Dark mode: more visible with higher opacity
-            gridLayer.strokeColor = UIColor.separator.withAlphaComponent(0.4).cgColor
+            gridLayer.strokeColor = UIColor.separator.withAlphaComponent(0.65).cgColor
         } else {
             // Light mode: subtle but visible
-            gridLayer.strokeColor = UIColor.separator.withAlphaComponent(0.15).cgColor
+            gridLayer.strokeColor = UIColor.separator.withAlphaComponent(0.2).cgColor
         }
     }
     
