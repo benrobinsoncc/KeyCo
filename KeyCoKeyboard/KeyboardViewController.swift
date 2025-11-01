@@ -477,10 +477,10 @@ class KeyboardViewController: UIInputViewController {
                     self?.reloadGoogle()
                 }),
                 .init(style: .spacer),
-                .init(style: .text(title: "Open", symbolName: "safari", isPrimary: false), action: { [weak self] in
+                .init(style: .text(title: "Open", symbolName: nil, isPrimary: false), action: { [weak self] in
                     self?.openGoogleResult()
                 }),
-                .init(style: .text(title: "Insert", symbolName: "arrow.up", isPrimary: false), action: { [weak self] in
+                .init(style: .text(title: "Insert", symbolName: nil, isPrimary: false), action: { [weak self] in
                     self?.insertGoogleResult()
                 })
             ],
@@ -522,7 +522,8 @@ class KeyboardViewController: UIInputViewController {
                 .init(style: .icon(symbolName: "doc.on.doc", accessibilityLabel: "Copy"), action: { [weak self] in
                     self?.copyChatGPTOutput()
                 }),
-                .init(style: .text(title: "Insert", symbolName: "arrow.up", isPrimary: true), action: { [weak self] in
+                .init(style: .spacer),
+                .init(style: .text(title: "Insert", symbolName: nil, isPrimary: false), action: { [weak self] in
                     self?.insertChatGPTOutput()
                 })
             ],
