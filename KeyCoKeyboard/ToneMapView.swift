@@ -321,6 +321,34 @@ final class ToneMapView: UIView {
         shouldAnimatePosition = false
     }
     
+    /// Reset selector to center position and stop loading state
+    func reset() {
+        // Stop any loading spinner (this will animate transform reset if loading was active)
+        let wasLoading = loadingSpinner.isAnimating
+        setLoading(false)
+        
+        // Reset position to center (0.5, 0.5) immediately (no animation)
+        setPosition((0.5, 0.5), animated: false)
+        
+        // Reset drag state
+        isDragging = false
+        
+        // Reset grid position tracking
+        lastGridPosition = (2, 2)
+        
+        // Reset selector transform to ensure it's not stuck in a scaled state
+        // If loading was active, setLoading(false) will animate this, but we ensure it's reset
+        // If loading was not active, we reset it immediately
+        if !wasLoading {
+            selector.transform = .identity
+        } else {
+            // If loading was active, setLoading will animate the reset, but ensure it completes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.selector.transform = .identity
+            }
+        }
+    }
+    
     func setLoading(_ loading: Bool) {
         if loading {
             // Transition: dot fades out with rotation and scale → spinner fades in with rotation

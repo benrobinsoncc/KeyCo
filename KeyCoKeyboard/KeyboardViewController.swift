@@ -138,6 +138,10 @@ class KeyboardViewController: UIInputViewController {
         loadingTimeoutTimer?.invalidate()
         loadingTimeoutTimer = nil
         toneMapView?.setLoading(false)
+        // Reset selector when leaving write mode (so it's ready when returning)
+        if currentMode == .write {
+            toneMapView?.reset()
+        }
         persistState()
     }
     
@@ -681,6 +685,10 @@ class KeyboardViewController: UIInputViewController {
         updateModeVisibility()
         if mode == .google {
             loadGoogleSearchFromContext()
+        }
+        // Reset selector when leaving write mode (so it's ready when returning)
+        if previousMode == .write && mode != .write {
+            toneMapView?.reset()
         }
         updateContainerExpansionState()
         persistState()
