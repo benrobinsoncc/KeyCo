@@ -64,7 +64,7 @@ export default async function handler(
     });
 
     if (!openAIResponse.ok) {
-      const errorData = await openAIResponse.json().catch(() => ({}));
+      const errorData = await openAIResponse.json().catch(() => ({})) as { error?: { message?: string } };
       console.error('OpenAI API error:', errorData);
       return response.status(500).json({ 
         error: 'Failed to generate response',
@@ -72,12 +72,20 @@ export default async function handler(
       });
     }
 
-    const data = await openAIResponse.json();
+    const data = await openAIResponse.json() as {
+      choices?: Array<{
+        message?: {
+          content?: string;
+        };
+      }>;
+    };
 
     // Extract the response text
     if (data.choices && data.choices[0] && data.choices[0].message) {
-      const responseText = data.choices[0].message.content.trim();
-      return response.status(200).json({ text: responseText });
+      const responseText = data.choices[0].message.content?.trim();
+      if (responseText) {
+        return response.status(200).json({ text: responseText });
+      }
     }
 
     return response.status(500).json({ error: 'Invalid response from AI' });

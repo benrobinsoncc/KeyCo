@@ -35,6 +35,7 @@
 		AD000001000000000000001 /* ToneMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD000002000000000000001 /* ToneMapView.swift */; };
 		AE000001000000000000001 /* BackendConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE000002000000000000001 /* BackendConfig.swift */; };
 		AF000001000000000000001 /* NetworkTestHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF000002000000000000001 /* NetworkTestHelper.swift */; };
+		B000000100000000000000001 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B000000200000000000000001 /* APIClient.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -91,6 +92,7 @@
 		AD000002000000000000001 /* ToneMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToneMapView.swift; sourceTree = "<group>"; };
 		AE000002000000000000001 /* BackendConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendConfig.swift; sourceTree = "<group>"; };
 		AF000002000000000000001 /* NetworkTestHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkTestHelper.swift; sourceTree = "<group>"; };
+		B000000200000000000000001 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -196,6 +198,7 @@
 				AD000002000000000000001 /* ToneMapView.swift */,
 				AE000002000000000000001 /* BackendConfig.swift */,
 				AF000002000000000000001 /* NetworkTestHelper.swift */,
+				B000000200000000000000001 /* APIClient.swift */,
 				A1000018000000000000001 /* Info.plist */,
 			);
 			path = KeyCoKeyboard;
@@ -352,6 +355,7 @@
 				AD000001000000000000001 /* ToneMapView.swift in Sources */,
 				AE000001000000000000001 /* BackendConfig.swift in Sources */,
 				AF000001000000000000001 /* NetworkTestHelper.swift in Sources */,
+				B000000100000000000000001 /* APIClient.swift in Sources */,
 				A8000002000000000000001 /* FastBlurEffect.swift in Sources */,
 				524ADCEE2EB3FC8000DE2382 /* SnippetsContentView.swift in Sources */,
 				524ADCEF2EB3FC8000DE2382 /* SnippetsStore.swift in Sources */,

@@ -1051,9 +1051,9 @@ class KeyboardViewController: UIInputViewController {
             self?.messagePreviewLabel?.isHidden = true
             
             // Set a timeout to ensure loading state is cleared if callback never fires
-            // 15 seconds should be enough - API usually responds in 2-5 seconds
+            // Extended timeout to account for retries (max 3 retries with delays)
             self?.loadingTimeoutTimer?.invalidate()
-            self?.loadingTimeoutTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: false) { [weak self] _ in
+            self?.loadingTimeoutTimer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: false) { [weak self] _ in
                 NSLog("[Write Mode] TIMEOUT: API call timed out, clearing loading state")
                 self?.toneMapView?.setLoading(false)
                 self?.isWriting = false
@@ -1062,173 +1062,50 @@ class KeyboardViewController: UIInputViewController {
             }
         }
         
-        // Visual feedback is shown via the loading spinner in the tone map selector
+        // Use APIClient with retry logic
+        let request = APIClient.RewriteRequest(text: textToUse, tone: tone, length: length)
         
-        // Call backend API instead of OpenAI directly
-        guard let url = BackendConfig.rewriteURL else {
-            DispatchQueue.main.async { [weak self] in
-                self?.handleWriteError("Invalid backend URL. Please configure BackendConfig.baseURL")
+        APIClient.rewriteText(request: request, onProgress: { [weak self] progressMessage in
+            // Show retry progress if retrying (already on main queue from APIClient)
+            if progressMessage.contains("Retrying") {
+                self?.messagePreviewLabel?.text = progressMessage
+                self?.messagePreviewLabel?.textColor = .systemOrange
+                self?.messagePreviewLabel?.isHidden = false
+            } else if progressMessage.contains("Service temporarily unavailable") {
+                self?.messagePreviewLabel?.text = progressMessage
+                self?.messagePreviewLabel?.textColor = .systemOrange
+                self?.messagePreviewLabel?.isHidden = false
             }
-            return
-        }
-        
-        NSLog("[Write Mode] ===== BACKEND API CALL =====")
-        NSLog("[Write Mode] Base URL: \(BackendConfig.baseURL)")
-        NSLog("[Write Mode] Full URL: \(url.absoluteString)")
-        NSLog("[Write Mode] URL is valid: \(url != nil)")
-        NSLog("[Write Mode] Host: \(url.host ?? "nil")")
-        NSLog("[Write Mode] Scheme: \(url.scheme ?? "nil")")
-        NSLog("[Write Mode] ============================")
-        
-        // Test if URL can be created
-        guard url.host != nil, url.scheme == "https" else {
-            NSLog("[Write Mode] ❌ Invalid URL structure!")
-            DispatchQueue.main.async { [weak self] in
-                self?.handleWriteError("Invalid URL configuration")
-            }
-            return
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
-        
-        let requestBody: [String: Any] = [
-            "text": textToUse,
-            "tone": Double(tone),
-            "length": Double(length)
-        ]
-
-        guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else {
-            DispatchQueue.main.async { [weak self] in
-                self?.handleWriteError("Failed to create request")
-            }
-            return
-        }
-
-        request.httpBody = httpBody
-
-        NSLog("[Write Mode] Creating URLSession task with URL: \(request.url?.absoluteString ?? "nil")")
-
-        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                // Cancel timeout timer since we got a response
-                self?.loadingTimeoutTimer?.invalidate()
-                self?.loadingTimeoutTimer = nil
+        }) { [weak self] result in
+            // Cancel timeout timer since we got a response
+            self?.loadingTimeoutTimer?.invalidate()
+            self?.loadingTimeoutTimer = nil
+            
+            // Clear the current task reference
+            self?.currentTask = nil
+            
+            guard let self = self else { return }
+            
+            self.isWriting = false
+            
+            // Hide spinner in selector knob
+            self.toneMapView?.setLoading(false)
+            
+            switch result {
+            case .success(let response):
+                NSLog("[Write Mode] Got AI response: '\(response.text)'")
                 
-                // Clear the current task reference
-                self?.currentTask = nil
+                // Replace text in the text field
+                self.replaceTextFieldContent(with: response.text)
                 
-                guard let self = self else { return }
-                
-                self.isWriting = false
-                
-                // Hide spinner in selector knob
-                self.toneMapView?.setLoading(false)
-                
-                // Hide status label - only show errors
+                // Ensure label stays hidden on success
                 self.messagePreviewLabel?.isHidden = true
-
-                NSLog("[Write Mode] Response received. Error: \(error?.localizedDescription ?? "none"), Data: \(data != nil ? "present" : "nil")")
                 
-                // Detailed error logging
-                if let error = error {
-                    let nsError = error as NSError
-                    NSLog("[Write Mode] ERROR DETAILS:")
-                    NSLog("[Write Mode]   Domain: \(nsError.domain)")
-                    NSLog("[Write Mode]   Code: \(nsError.code)")
-                    NSLog("[Write Mode]   Description: \(nsError.localizedDescription)")
-                    NSLog("[Write Mode]   UserInfo: \(nsError.userInfo)")
-                }
-                
-                // Check HTTP response status
-                if let httpResponse = response as? HTTPURLResponse {
-                    NSLog("[Write Mode] HTTP Status Code: \(httpResponse.statusCode)")
-                    if httpResponse.statusCode < 200 || httpResponse.statusCode >= 300 {
-                        let errorMsg = "HTTP Error: \(httpResponse.statusCode)"
-                        NSLog("[Write Mode] \(errorMsg)")
-                        self.handleWriteError(errorMsg)
-                        return
-                    }
-                }
-
-                if let error = error {
-                    // Check for specific error codes
-                    let nsError = error as NSError
-                    NSLog("[Write Mode] Network error: \(error.localizedDescription), Code: \(nsError.code), Domain: \(nsError.domain)")
-                    
-                    // Ignore cancellation errors (user might have cancelled)
-                    if nsError.code != NSURLErrorCancelled {
-                        // Handle specific error codes
-                        if nsError.code == NSURLErrorTimedOut {
-                            self.handleWriteError("Request timed out. Please try again.")
-                        } else if nsError.code == NSURLErrorCannotFindHost || nsError.code == -1003 {
-                            NSLog("[Write Mode] ⚠️ Hostname resolution failed. URL: \(url.absoluteString)")
-                            NSLog("[Write Mode] Check device internet connection and DNS settings")
-                            self.handleWriteError("Cannot connect to server. Check internet connection.")
-                        } else {
-                            self.handleWriteError("Network error: \(error.localizedDescription)")
-                        }
-                    } else {
-                        // Even for cancellation, make sure loading is cleared (should already be done above)
-                        NSLog("[Write Mode] Request was cancelled")
-                    }
-                    return
-                }
-
-                guard let data = data else {
-                    self.handleWriteError("No data received")
-                    return
-                }
-
-                // Log the raw response for debugging
-                if let rawString = String(data: data, encoding: .utf8) {
-                    NSLog("[Write Mode] Raw API response: \(rawString)")
-                }
-
-                    do {
-                        if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                            NSLog("[Write Mode] Parsed JSON keys: \(json.keys)")
-                            
-                            // Check for API errors first
-                            if let error = json["error"] as? String {
-                                NSLog("[Write Mode] API Error: \(error)")
-                                let details = json["details"] as? String
-                                let errorMessage = details ?? error
-                                self.handleWriteError("API Error: \(errorMessage)")
-                                return
-                            }
-                            
-                            // Backend returns: { "text": "rewritten text" }
-                            if let newText = json["text"] as? String {
-                                let trimmedText = newText.trimmingCharacters(in: .whitespacesAndNewlines)
-                                NSLog("[Write Mode] Got AI response: '\(trimmedText)'")
-                                
-                                // Try to replace text
-                                self.replaceTextFieldContent(with: trimmedText)
-                                
-                                // Ensure label stays hidden on success
-                                self.messagePreviewLabel?.isHidden = true
-                            } else {
-                                NSLog("[Write Mode] Failed to parse text from response")
-                                self.handleWriteError("Invalid response format")
-                            }
-                        } else {
-                            NSLog("[Write Mode] Failed to parse JSON")
-                            self.handleWriteError("Invalid JSON format")
-                        }
-                    } catch {
-                        NSLog("[Write Mode] JSON parsing error: \(error)")
-                        self.handleWriteError("Failed to parse response: \(error.localizedDescription)")
-                    }
+            case .failure(let error):
+                NSLog("[Write Mode] API Error: \(error.localizedDescription ?? "Unknown error")")
+                self.handleWriteError(error.localizedDescription ?? "Unknown error occurred")
             }
         }
-
-        currentTask = task
-        NSLog("[Write Mode] Starting URLSession task (ID: \(task.taskIdentifier))")
-        task.resume()
-        NSLog("[Write Mode] URLSession task.resume() called, task state should be active")
     }
 
     private func describeTone(_ value: Float) -> String {
@@ -1381,74 +1258,27 @@ class KeyboardViewController: UIInputViewController {
 
         chatgptContentView.responseText = "Loading..."
 
-        // Call backend API instead of OpenAI directly
-        guard let url = BackendConfig.chatURL else {
-            chatgptContentView.responseText = "Error: Invalid backend URL. Please configure BackendConfig.baseURL"
-            return
-        }
+        // Use APIClient with retry logic
+        let request = APIClient.ChatRequest(query: query)
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
-
-        let requestBody: [String: Any] = [
-            "query": query
-        ]
-
-        guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else {
-            chatgptContentView.responseText = "Error: Failed to create request"
-            return
-        }
-
-        request.httpBody = httpBody
-
-        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-
-                if let error = error {
-                    self.chatgptContentView.responseText = "Error: \(error.localizedDescription)"
-                    NSLog("[KeyCo] ChatGPT API error: %@", error.localizedDescription)
-                    return
-                }
-
-                guard let data = data else {
-                    self.chatgptContentView.responseText = "Error: No data received"
-                    return
-                }
-
-                // Check HTTP status
-                if let httpResponse = response as? HTTPURLResponse,
-                   httpResponse.statusCode < 200 || httpResponse.statusCode >= 300 {
-                    self.chatgptContentView.responseText = "Error: HTTP \(httpResponse.statusCode)"
-                    return
-                }
-
-                do {
-                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                        // Backend returns: { "text": "response text" }
-                        if let text = json["text"] as? String {
-                            self.chatgptContentView.responseText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                        } else if let error = json["error"] as? String {
-                            // Check for error response
-                            let details = json["details"] as? String
-                            self.chatgptContentView.responseText = "API Error: \(details ?? error)"
-                            NSLog("[KeyCo] ChatGPT API error: %@", details ?? error)
-                        } else {
-                            self.chatgptContentView.responseText = "Error: Invalid response format"
-                        }
-                    } else {
-                        self.chatgptContentView.responseText = "Error: Failed to parse response"
-                    }
-                } catch {
-                    self.chatgptContentView.responseText = "Error: Failed to parse response"
-                    NSLog("[KeyCo] ChatGPT parse error: %@", error.localizedDescription)
-                }
+        APIClient.chatQuery(request: request, onProgress: { [weak self] progressMessage in
+            // Show retry progress if retrying (already on main queue from APIClient)
+            if progressMessage.contains("Retrying") || progressMessage.contains("Service temporarily unavailable") {
+                self?.chatgptContentView.responseText = progressMessage
+            }
+        }) { [weak self] result in
+            guard let self = self else { return }
+            
+            switch result {
+            case .success(let response):
+                self.chatgptContentView.responseText = response.text
+                
+            case .failure(let error):
+                let errorMessage = error.localizedDescription ?? "Unknown error occurred"
+                self.chatgptContentView.responseText = "Error: \(errorMessage)"
+                NSLog("[KeyCo] ChatGPT API error: %@", errorMessage)
             }
         }
-
-        task.resume()
     }
 
     private func reloadChatGPT() {

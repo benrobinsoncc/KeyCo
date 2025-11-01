@@ -102,7 +102,7 @@ Rewritten message (strictly within limits):`;
     });
 
     if (!openAIResponse.ok) {
-      const errorData = await openAIResponse.json().catch(() => ({}));
+      const errorData = await openAIResponse.json().catch(() => ({})) as { error?: { message?: string } };
       console.error('OpenAI API error:', errorData);
       return response.status(500).json({ 
         error: 'Failed to generate rewrite',
@@ -110,12 +110,20 @@ Rewritten message (strictly within limits):`;
       });
     }
 
-    const data = await openAIResponse.json();
+    const data = await openAIResponse.json() as {
+      choices?: Array<{
+        message?: {
+          content?: string;
+        };
+      }>;
+    };
 
     // Extract the rewritten text
     if (data.choices && data.choices[0] && data.choices[0].message) {
-      const rewrittenText = data.choices[0].message.content.trim();
-      return response.status(200).json({ text: rewrittenText });
+      const rewrittenText = data.choices[0].message.content?.trim();
+      if (rewrittenText) {
+        return response.status(200).json({ text: rewrittenText });
+      }
     }
 
     return response.status(500).json({ error: 'Invalid response from AI' });
