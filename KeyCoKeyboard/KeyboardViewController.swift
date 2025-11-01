@@ -68,6 +68,15 @@ class KeyboardViewController: UIInputViewController {
         // Test network connectivity
         NetworkTestHelper.testConnectivity()
         
+        // Proactively check backend health
+        APIClient.checkBackendStatus { [weak self] isHealthy, errorMessage in
+            if !isHealthy {
+                NSLog("[KeyCo] Backend health check failed: \(errorMessage ?? "Unknown")")
+                // Don't show error to user proactively - wait for them to try using it
+                // This just helps us know if backend is down before they try
+            }
+        }
+        
         // Restore state first
         restoreState()
 
@@ -400,10 +409,13 @@ class KeyboardViewController: UIInputViewController {
             loadingIndicator.centerYAnchor.constraint(equalTo: toneMapView.centerYAnchor),
             
             // Message preview label (hidden when tone map is shown, but still needs constraints)
+            // Max width constraint to prevent overlap with axis labels (Friendly/Formal on left/right)
+            // Labels are 8pt padding + 70pt width = 78pt from each edge, so max width should account for this
             messagePreviewLabel.centerXAnchor.constraint(equalTo: writeContentView.centerXAnchor),
             messagePreviewLabel.centerYAnchor.constraint(equalTo: writeContentView.centerYAnchor),
-            messagePreviewLabel.leadingAnchor.constraint(equalTo: writeContentView.leadingAnchor, constant: 12),
-            messagePreviewLabel.trailingAnchor.constraint(equalTo: writeContentView.trailingAnchor, constant: -12)
+            messagePreviewLabel.widthAnchor.constraint(lessThanOrEqualTo: writeContentView.widthAnchor, multiplier: 0.6),
+            messagePreviewLabel.leadingAnchor.constraint(greaterThanOrEqualTo: writeContentView.leadingAnchor, constant: 85),
+            messagePreviewLabel.trailingAnchor.constraint(lessThanOrEqualTo: writeContentView.trailingAnchor, constant: -85)
         ])
 
         writeContainer = createActionContainer(
@@ -1172,7 +1184,7 @@ class KeyboardViewController: UIInputViewController {
     
     private func handleWriteError(_ message: String) {
         NSLog("[KeyCoKeyboard] Write error: %@", message)
-        messagePreviewLabel?.text = "Error: \(message)"
+        messagePreviewLabel?.text = message
         messagePreviewLabel?.textColor = .systemRed
         messagePreviewLabel?.isHidden = false
         // Always clear loading state when there's an error

@@ -10,11 +10,11 @@ final class APIClient {
         static let baseRetryDelay: TimeInterval = 1.0
         static let jitterRange: TimeInterval = 0.3 // 30% jitter for randomization
         static let circuitBreakerThreshold = 3
-        static let circuitBreakerCooldown: TimeInterval = 30.0
-        static let circuitBreakerHalfOpenTimeout: TimeInterval = 10.0 // Try again after 10s in half-open
-        static let requestTimeout: TimeInterval = 30.0
-        static let networkCheckTimeout: TimeInterval = 5.0
-        static let healthCheckTimeout: TimeInterval = 3.0
+        static let circuitBreakerCooldown: TimeInterval = 8.0 // Reduced from 30s - users won't wait 30s anyway
+        static let circuitBreakerHalfOpenTimeout: TimeInterval = 5.0 // Reduced from 10s
+        static let requestTimeout: TimeInterval = 15.0 // Reduced from 30s - fail faster
+        static let networkCheckTimeout: TimeInterval = 3.0 // Reduced from 5s - faster network check
+        static let healthCheckTimeout: TimeInterval = 2.0 // Reduced from 3s - faster health check
         static let maxRequestAge: TimeInterval = 300.0 // 5 minutes - deduplicate requests
     }
     
@@ -74,11 +74,13 @@ final class APIClient {
         case circuitBreakerOpen
         case timeout
         case noData
+        case noInternetConnection
+        case backendUnavailable
         
         var errorDescription: String? {
             switch self {
             case .networkError(let message):
-                return "Connection issue: \(message)"
+                return "Connection problem. Please try again."
             case .httpError(let code, let message):
                 // If message already contains retry info, use it directly
                 if message.contains("Retried") {
@@ -86,36 +88,40 @@ final class APIClient {
                 }
                 return APIError.userFriendlyMessage(for: code, details: message)
             case .invalidResponse:
-                return "Invalid response from server. Please try again."
+                return "Something went wrong. Please try again."
             case .invalidRequest:
-                return "Invalid request. Please check your input."
+                return "Couldn't process that. Please try again."
             case .circuitBreakerOpen:
-                return "Service is temporarily unavailable. Please try again in a moment."
+                return "AI isn't responding. Please try again."
             case .timeout:
-                return "Request timed out. Please try again."
+                return "Taking too long. Please try again."
             case .noData:
-                return "No response received from server."
+                return "No response. Please try again."
+            case .noInternetConnection:
+                return "No internet. Please try again."
+            case .backendUnavailable:
+                return "AI isn't responding. Please try again."
             }
         }
         
         static func userFriendlyMessage(for statusCode: Int, details: String? = nil) -> String {
             switch statusCode {
             case 400:
-                return "Invalid request. Please try again."
+                return "Couldn't process that. Please try again."
             case 401:
-                return "Authentication failed. Please check configuration."
+                return "Authentication problem. Please try again."
             case 403:
-                return "Access denied. Please check permissions."
+                return "Access denied. Please try again."
             case 404:
-                return "Service not found. Please check configuration."
+                return "Couldn't find that. Please try again."
             case 429:
-                return "Too many requests. Please wait a moment and try again."
+                return "Too many requests. Please wait and try again."
             case 500, 502, 503:
-                return "Service temporarily unavailable. Please try again."
+                return "AI isn't responding. Please try again."
             case 504:
-                return "Request timed out. Please try again."
+                return "Taking too long. Please try again."
             default:
-                return details ?? "HTTP Error \(statusCode). Please try again."
+                return "Something went wrong. Please try again."
             }
         }
         
@@ -127,8 +133,30 @@ final class APIClient {
                 return true
             case .httpError(429, _):
                 return true
+            case .noInternetConnection, .backendUnavailable:
+                return false // Don't retry - fail fast with clear message
             default:
                 return false
+            }
+        }
+    }
+    
+    // MARK: - Public API
+    
+    /// Check backend health status (for proactive checking)
+    static func checkBackendStatus(completion: @escaping (Bool, String?) -> Void) {
+        checkNetworkConnectivity { isConnected in
+            guard isConnected else {
+                completion(false, "No internet connection")
+                return
+            }
+            
+            checkBackendHealth { isHealthy in
+                if isHealthy {
+                    completion(true, nil)
+                } else {
+                    completion(false, "Backend service unavailable")
+                }
             }
         }
     }
@@ -155,13 +183,31 @@ final class APIClient {
         checkNetworkConnectivity { isConnected in
             guard isConnected else {
                 DispatchQueue.main.async {
-                    completion(.failure(.networkError("No internet connection. Please check your network settings.")))
+                    completion(.failure(.noInternetConnection))
                 }
                 return
             }
             
-            // Continue with API call...
-            self.performRewriteRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
+            // Quick backend health check (only if circuit breaker is open/half-open)
+            let circuitState = getCircuitBreakerState()
+            if case .open = circuitState {
+                // Circuit breaker is open - check health first
+                checkBackendHealth { isHealthy in
+                    if isHealthy {
+                        // Backend recovered - reset circuit breaker and proceed
+                        resetCircuitBreaker()
+                        self.performRewriteRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
+                    } else {
+                        // Still down - fail fast with clear message
+                        DispatchQueue.main.async {
+                            completion(.failure(.backendUnavailable))
+                        }
+                    }
+                }
+            } else {
+                // Circuit breaker is closed - proceed normally
+                self.performRewriteRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
+            }
         }
     }
     
@@ -174,30 +220,24 @@ final class APIClient {
         // Check circuit breaker state
         let circuitState = getCircuitBreakerState()
         switch circuitState {
-        case .open(let openUntil):
-            let remaining = Int(openUntil.timeIntervalSinceNow)
+        case .open:
+            // Fail fast - don't make user wait
             DispatchQueue.main.async {
-                onProgress?("Service temporarily unavailable. Please wait \(remaining)s...")
-            }
-            DispatchQueue.main.async {
-                completion(.failure(.circuitBreakerOpen))
+                completion(.failure(.backendUnavailable))
             }
             return
             
         case .halfOpen:
-            // In half-open state, check health before proceeding
+            // In half-open state, check health quickly before proceeding
             checkBackendHealth { isHealthy in
                 if isHealthy {
                     // Backend is healthy, proceed with request
                     self.executeRewriteRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
                 } else {
-                    // Still unhealthy, back to open state
+                    // Still unhealthy, back to open state but fail fast
                     self.setCircuitBreakerState(.open(openUntil: Date().addingTimeInterval(Config.circuitBreakerCooldown)))
                     DispatchQueue.main.async {
-                        onProgress?("Service temporarily unavailable. Please try again in a moment.")
-                    }
-                    DispatchQueue.main.async {
-                        completion(.failure(.circuitBreakerOpen))
+                        completion(.failure(.backendUnavailable))
                     }
                 }
             }
@@ -408,13 +448,31 @@ final class APIClient {
         checkNetworkConnectivity { isConnected in
             guard isConnected else {
                 DispatchQueue.main.async {
-                    completion(.failure(.networkError("No internet connection. Please check your network settings.")))
+                    completion(.failure(.noInternetConnection))
                 }
                 return
             }
             
-            // Continue with API call...
-            self.performChatRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
+            // Quick backend health check (only if circuit breaker is open/half-open)
+            let circuitState = getCircuitBreakerState()
+            if case .open = circuitState {
+                // Circuit breaker is open - check health first
+                checkBackendHealth { isHealthy in
+                    if isHealthy {
+                        // Backend recovered - reset circuit breaker and proceed
+                        resetCircuitBreaker()
+                        self.performChatRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
+                    } else {
+                        // Still down - fail fast with clear message
+                        DispatchQueue.main.async {
+                            completion(.failure(.backendUnavailable))
+                        }
+                    }
+                }
+            } else {
+                // Circuit breaker is closed - proceed normally
+                self.performChatRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
+            }
         }
     }
     
@@ -427,30 +485,24 @@ final class APIClient {
         // Check circuit breaker state
         let circuitState = getCircuitBreakerState()
         switch circuitState {
-        case .open(let openUntil):
-            let remaining = Int(openUntil.timeIntervalSinceNow)
+        case .open:
+            // Fail fast - don't make user wait
             DispatchQueue.main.async {
-                onProgress?("Service temporarily unavailable. Please wait \(remaining)s...")
-            }
-            DispatchQueue.main.async {
-                completion(.failure(.circuitBreakerOpen))
+                completion(.failure(.backendUnavailable))
             }
             return
             
         case .halfOpen:
-            // In half-open state, check health before proceeding
+            // In half-open state, check health quickly before proceeding
             checkBackendHealth { isHealthy in
                 if isHealthy {
                     // Backend is healthy, proceed with request
                     self.executeChatRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
                 } else {
-                    // Still unhealthy, back to open state
+                    // Still unhealthy, back to open state but fail fast
                     self.setCircuitBreakerState(.open(openUntil: Date().addingTimeInterval(Config.circuitBreakerCooldown)))
                     DispatchQueue.main.async {
-                        onProgress?("Service temporarily unavailable. Please try again in a moment.")
-                    }
-                    DispatchQueue.main.async {
-                        completion(.failure(.circuitBreakerOpen))
+                        completion(.failure(.backendUnavailable))
                     }
                 }
             }
