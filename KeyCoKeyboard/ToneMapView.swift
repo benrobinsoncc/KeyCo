@@ -439,12 +439,12 @@ final class ToneMapView: UIView {
             detailedLabel.widthAnchor.constraint(equalToConstant: 80),
             detailedLabel.heightAnchor.constraint(equalToConstant: labelHeight),
             
-            friendlyLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            friendlyLabel.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -1),
             friendlyLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
             friendlyLabel.widthAnchor.constraint(equalToConstant: 70),
             friendlyLabel.heightAnchor.constraint(equalToConstant: labelHeight),
             
-            formalLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            formalLabel.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -1),
             formalLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -2),
             formalLabel.widthAnchor.constraint(equalToConstant: 70),
             formalLabel.heightAnchor.constraint(equalToConstant: labelHeight),
