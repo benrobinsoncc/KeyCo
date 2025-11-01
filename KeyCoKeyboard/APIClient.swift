@@ -8,16 +8,39 @@ final class APIClient {
     private struct Config {
         static let maxRetries = 3
         static let baseRetryDelay: TimeInterval = 1.0
+        static let jitterRange: TimeInterval = 0.3 // 30% jitter for randomization
         static let circuitBreakerThreshold = 3
         static let circuitBreakerCooldown: TimeInterval = 30.0
+        static let circuitBreakerHalfOpenTimeout: TimeInterval = 10.0 // Try again after 10s in half-open
         static let requestTimeout: TimeInterval = 30.0
+        static let networkCheckTimeout: TimeInterval = 5.0
+        static let healthCheckTimeout: TimeInterval = 3.0
+        static let maxRequestAge: TimeInterval = 300.0 // 5 minutes - deduplicate requests
     }
     
     // MARK: - Circuit Breaker State
     
+    private enum CircuitBreakerState {
+        case closed
+        case open(openUntil: Date)
+        case halfOpen(halfOpenUntil: Date)
+        
+        var openUntil: Date? {
+            if case .open(let date) = self {
+                return date
+            }
+            return nil
+        }
+    }
+    
     private static var consecutiveFailures = 0
-    private static var circuitBreakerOpenUntil: Date?
+    private static var circuitBreakerState: CircuitBreakerState = .closed
     private static let circuitBreakerQueue = DispatchQueue(label: "com.keyco.apiclient.circuitbreaker")
+    
+    // MARK: - Request Deduplication
+    
+    private static var activeRequests: [String: Date] = [:]
+    private static let requestDeduplicationQueue = DispatchQueue(label: "com.keyco.apiclient.deduplication")
     
     // MARK: - Request Types
     
@@ -119,26 +142,79 @@ final class APIClient {
         onProgress: ((String) -> Void)? = nil,
         completion: @escaping (Result<RewriteResponse, APIError>) -> Void
     ) {
-        // Check circuit breaker
-        if let openUntil = circuitBreakerQueue.sync(execute: { circuitBreakerOpenUntil }) {
-            if openUntil > Date() {
-                let remaining = Int(openUntil.timeIntervalSinceNow)
-                DispatchQueue.main.async {
-                    onProgress?("Service temporarily unavailable. Please wait \(remaining)s...")
-                }
-                DispatchQueue.main.async {
-                    completion(.failure(.circuitBreakerOpen))
-                }
-                return
-            } else {
-                // Circuit breaker can be closed now
-                circuitBreakerQueue.sync {
-                    circuitBreakerOpenUntil = nil
-                    consecutiveFailures = 0
-                }
+        // Check for duplicate requests (prevent spam)
+        let requestKey = self.requestKey(for: request)
+        if isDuplicateRequest(requestKey) {
+            DispatchQueue.main.async {
+                onProgress?("Request already in progress...")
             }
+            return
         }
         
+        // Check network connectivity before making request
+        checkNetworkConnectivity { isConnected in
+            guard isConnected else {
+                DispatchQueue.main.async {
+                    completion(.failure(.networkError("No internet connection. Please check your network settings.")))
+                }
+                return
+            }
+            
+            // Continue with API call...
+            self.performRewriteRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
+        }
+    }
+    
+    private static func performRewriteRequest(
+        request: RewriteRequest,
+        retryAttempt: Int,
+        onProgress: ((String) -> Void)?,
+        completion: @escaping (Result<RewriteResponse, APIError>) -> Void
+    ) {
+        // Check circuit breaker state
+        let circuitState = getCircuitBreakerState()
+        switch circuitState {
+        case .open(let openUntil):
+            let remaining = Int(openUntil.timeIntervalSinceNow)
+            DispatchQueue.main.async {
+                onProgress?("Service temporarily unavailable. Please wait \(remaining)s...")
+            }
+            DispatchQueue.main.async {
+                completion(.failure(.circuitBreakerOpen))
+            }
+            return
+            
+        case .halfOpen:
+            // In half-open state, check health before proceeding
+            checkBackendHealth { isHealthy in
+                if isHealthy {
+                    // Backend is healthy, proceed with request
+                    self.executeRewriteRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
+                } else {
+                    // Still unhealthy, back to open state
+                    self.setCircuitBreakerState(.open(openUntil: Date().addingTimeInterval(Config.circuitBreakerCooldown)))
+                    DispatchQueue.main.async {
+                        onProgress?("Service temporarily unavailable. Please try again in a moment.")
+                    }
+                    DispatchQueue.main.async {
+                        completion(.failure(.circuitBreakerOpen))
+                    }
+                }
+            }
+            return
+            
+        case .closed:
+            // Circuit breaker is closed, proceed normally
+            executeRewriteRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
+        }
+    }
+    
+    private static func executeRewriteRequest(
+        request: RewriteRequest,
+        retryAttempt: Int,
+        onProgress: ((String) -> Void)?,
+        completion: @escaping (Result<RewriteResponse, APIError>) -> Void
+    ) {
         // Validate request
         guard !request.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             DispatchQueue.main.async {
@@ -319,26 +395,79 @@ final class APIClient {
         onProgress: ((String) -> Void)? = nil,
         completion: @escaping (Result<ChatResponse, APIError>) -> Void
     ) {
-        // Check circuit breaker
-        if let openUntil = circuitBreakerQueue.sync(execute: { circuitBreakerOpenUntil }) {
-            if openUntil > Date() {
-                let remaining = Int(openUntil.timeIntervalSinceNow)
-                DispatchQueue.main.async {
-                    onProgress?("Service temporarily unavailable. Please wait \(remaining)s...")
-                }
-                DispatchQueue.main.async {
-                    completion(.failure(.circuitBreakerOpen))
-                }
-                return
-            } else {
-                // Circuit breaker can be closed now
-                circuitBreakerQueue.sync {
-                    circuitBreakerOpenUntil = nil
-                    consecutiveFailures = 0
-                }
+        // Check for duplicate requests (prevent spam)
+        let requestKey = self.requestKey(for: request)
+        if isDuplicateRequest(requestKey) {
+            DispatchQueue.main.async {
+                onProgress?("Request already in progress...")
             }
+            return
         }
         
+        // Check network connectivity before making request
+        checkNetworkConnectivity { isConnected in
+            guard isConnected else {
+                DispatchQueue.main.async {
+                    completion(.failure(.networkError("No internet connection. Please check your network settings.")))
+                }
+                return
+            }
+            
+            // Continue with API call...
+            self.performChatRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
+        }
+    }
+    
+    private static func performChatRequest(
+        request: ChatRequest,
+        retryAttempt: Int,
+        onProgress: ((String) -> Void)?,
+        completion: @escaping (Result<ChatResponse, APIError>) -> Void
+    ) {
+        // Check circuit breaker state
+        let circuitState = getCircuitBreakerState()
+        switch circuitState {
+        case .open(let openUntil):
+            let remaining = Int(openUntil.timeIntervalSinceNow)
+            DispatchQueue.main.async {
+                onProgress?("Service temporarily unavailable. Please wait \(remaining)s...")
+            }
+            DispatchQueue.main.async {
+                completion(.failure(.circuitBreakerOpen))
+            }
+            return
+            
+        case .halfOpen:
+            // In half-open state, check health before proceeding
+            checkBackendHealth { isHealthy in
+                if isHealthy {
+                    // Backend is healthy, proceed with request
+                    self.executeChatRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
+                } else {
+                    // Still unhealthy, back to open state
+                    self.setCircuitBreakerState(.open(openUntil: Date().addingTimeInterval(Config.circuitBreakerCooldown)))
+                    DispatchQueue.main.async {
+                        onProgress?("Service temporarily unavailable. Please try again in a moment.")
+                    }
+                    DispatchQueue.main.async {
+                        completion(.failure(.circuitBreakerOpen))
+                    }
+                }
+            }
+            return
+            
+        case .closed:
+            // Circuit breaker is closed, proceed normally
+            executeChatRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
+        }
+    }
+    
+    private static func executeChatRequest(
+        request: ChatRequest,
+        retryAttempt: Int,
+        onProgress: ((String) -> Void)?,
+        completion: @escaping (Result<ChatResponse, APIError>) -> Void
+    ) {
         // Validate request
         guard !request.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             DispatchQueue.main.async {
@@ -537,11 +666,11 @@ final class APIClient {
             return
         }
         
-        // Calculate exponential backoff delay: 1s, 2s, 4s
-        let delay = Config.baseRetryDelay * pow(2.0, Double(retryAttempt))
+        // Calculate exponential backoff delay: 1s, 2s, 4s (with jitter)
+        let delay = calculateBackoffDelay(retryAttempt: retryAttempt)
         let nextAttempt = retryAttempt + 1
         
-        NSLog("[APIClient] Retrying rewrite request after \(delay)s (attempt \(nextAttempt)/\(Config.maxRetries))")
+        NSLog("[APIClient] Retrying rewrite request after \(String(format: "%.2f", delay))s (attempt \(nextAttempt)/\(Config.maxRetries))")
         
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
             rewriteText(request: request, retryAttempt: nextAttempt, onProgress: onProgress, completion: completion)
@@ -582,11 +711,11 @@ final class APIClient {
             return
         }
         
-        // Calculate exponential backoff delay: 1s, 2s, 4s
-        let delay = Config.baseRetryDelay * pow(2.0, Double(retryAttempt))
+        // Calculate exponential backoff delay: 1s, 2s, 4s (with jitter)
+        let delay = calculateBackoffDelay(retryAttempt: retryAttempt)
         let nextAttempt = retryAttempt + 1
         
-        NSLog("[APIClient] Retrying chat request after \(delay)s (attempt \(nextAttempt)/\(Config.maxRetries))")
+        NSLog("[APIClient] Retrying chat request after \(String(format: "%.2f", delay))s (attempt \(nextAttempt)/\(Config.maxRetries))")
         
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
             chatQuery(request: request, retryAttempt: nextAttempt, onProgress: onProgress, completion: completion)
@@ -595,11 +724,42 @@ final class APIClient {
     
     // MARK: - Circuit Breaker
     
+    /// Get current circuit breaker state
+    private static func getCircuitBreakerState() -> CircuitBreakerState {
+        return circuitBreakerQueue.sync {
+            // Check if open state has expired
+            if case .open(let openUntil) = circuitBreakerState {
+                if openUntil <= Date() {
+                    // Transition to half-open
+                    circuitBreakerState = .halfOpen(halfOpenUntil: Date().addingTimeInterval(Config.circuitBreakerHalfOpenTimeout))
+                }
+            }
+            
+            // Check if half-open state has expired
+            if case .halfOpen(let halfOpenUntil) = circuitBreakerState {
+                if halfOpenUntil <= Date() {
+                    // Transition back to closed
+                    circuitBreakerState = .closed
+                    consecutiveFailures = 0
+                }
+            }
+            
+            return circuitBreakerState
+        }
+    }
+    
+    /// Set circuit breaker state
+    private static func setCircuitBreakerState(_ state: CircuitBreakerState) {
+        circuitBreakerQueue.async {
+            circuitBreakerState = state
+        }
+    }
+    
     /// Reset the circuit breaker (useful for testing or after fixing backend issues)
     static func resetCircuitBreaker() {
         circuitBreakerQueue.async {
             consecutiveFailures = 0
-            circuitBreakerOpenUntil = nil
+            circuitBreakerState = .closed
             NSLog("[APIClient] Circuit breaker manually reset")
         }
     }
@@ -607,7 +767,10 @@ final class APIClient {
     private static func recordSuccess() {
         circuitBreakerQueue.async {
             consecutiveFailures = 0
-            circuitBreakerOpenUntil = nil
+            // If in half-open, transition to closed
+            if case .halfOpen = circuitBreakerState {
+                circuitBreakerState = .closed
+            }
         }
     }
     
@@ -616,13 +779,105 @@ final class APIClient {
             consecutiveFailures += 1
             
             if consecutiveFailures >= Config.circuitBreakerThreshold {
-                circuitBreakerOpenUntil = Date().addingTimeInterval(Config.circuitBreakerCooldown)
+                circuitBreakerState = .open(openUntil: Date().addingTimeInterval(Config.circuitBreakerCooldown))
                 NSLog("[APIClient] Circuit breaker opened due to \(consecutiveFailures) consecutive failures. Will retry after \(Config.circuitBreakerCooldown)s")
             }
         }
     }
     
     // MARK: - Helpers
+    
+    /// Check backend health before making requests
+    private static func checkBackendHealth(completion: @escaping (Bool) -> Void) {
+        guard let url = URL(string: "\(BackendConfig.baseURL)/api/health") else {
+            completion(false)
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = Config.healthCheckTimeout
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            guard error == nil,
+                  let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                completion(false)
+                return
+            }
+            
+            // Parse health check response
+            if let data = data,
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let status = json["status"] as? String,
+               status == "healthy" {
+                completion(true)
+            } else {
+                completion(false)
+            }
+        }
+        
+        task.resume()
+    }
+    
+    /// Check if network is available before making request
+    private static func checkNetworkConnectivity(completion: @escaping (Bool) -> Void) {
+        // Quick check using Reachability-like approach
+        guard let url = URL(string: "https://www.apple.com") else {
+            completion(false)
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        request.timeoutInterval = Config.networkCheckTimeout
+        
+        let task = URLSession.shared.dataTask(with: request) { _, response, error in
+            let isAvailable = error == nil && (response as? HTTPURLResponse)?.statusCode == 200
+            completion(isAvailable)
+        }
+        
+        task.resume()
+    }
+    
+    /// Generate a request key for deduplication
+    private static func requestKey(for request: RewriteRequest) -> String {
+        // Create a hash of the request content
+        let content = "\(request.text.prefix(50))|\(request.tone)|\(request.length)"
+        return content.hash.description
+    }
+    
+    private static func requestKey(for request: ChatRequest) -> String {
+        // Create a hash of the request content
+        let content = "\(request.query.prefix(100))"
+        return content.hash.description
+    }
+    
+    /// Check if request is duplicate (within last 5 minutes)
+    private static func isDuplicateRequest(_ key: String) -> Bool {
+        return requestDeduplicationQueue.sync {
+            // Clean up old requests
+            let now = Date()
+            activeRequests = activeRequests.filter { now.timeIntervalSince($0.value) < Config.maxRequestAge }
+            
+            // Check if this request exists
+            if let existingDate = activeRequests[key] {
+                return now.timeIntervalSince(existingDate) < 5.0 // 5 second deduplication window
+            }
+            
+            // Record this request
+            activeRequests[key] = now
+            return false
+        }
+    }
+    
+    /// Calculate exponential backoff delay with jitter to prevent thundering herd
+    private static func calculateBackoffDelay(retryAttempt: Int) -> TimeInterval {
+        let baseDelay = Config.baseRetryDelay * pow(2.0, Double(retryAttempt))
+        // Add jitter (±30%) to prevent synchronized retries
+        let jitter = Double.random(in: -Config.jitterRange...Config.jitterRange) * baseDelay
+        return max(0.1, baseDelay + jitter) // Ensure minimum 0.1s delay
+    }
     
     private static func extractErrorMessage(from data: Data?) -> String {
         guard let data = data else { return "" }
