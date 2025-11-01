@@ -479,10 +479,10 @@ class KeyboardViewController: UIInputViewController {
                 .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
                     self?.switchToMode(.home, height: .small)
                 }),
-                .init(style: .icon(symbolName: "arrow.left", accessibilityLabel: "Back"), action: { [weak self] in
+                .init(style: .icon(symbolName: "chevron.left", accessibilityLabel: "Back"), action: { [weak self] in
                     self?.goBackGoogle()
                 }),
-                .init(style: .icon(symbolName: "arrow.right", accessibilityLabel: "Forward"), action: { [weak self] in
+                .init(style: .icon(symbolName: "chevron.right", accessibilityLabel: "Forward"), action: { [weak self] in
                     self?.goForwardGoogle()
                 }),
                 .init(style: .icon(symbolName: "arrow.clockwise", accessibilityLabel: "Reload"), action: { [weak self] in
