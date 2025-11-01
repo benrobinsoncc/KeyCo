@@ -191,10 +191,9 @@ struct AnimatedResponseText: View {
         ScrollView {
             Text(text)
                 .font(.system(size: 16))
-                .foregroundColor(.black)
+                .foregroundColor(.primary)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
                 .padding(.top, 0)
-                .opacity(text == "Loading..." ? 0.5 : 1.0)
         }
     }
 }
