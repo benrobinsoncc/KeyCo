@@ -186,14 +186,102 @@ struct AnimatedResponseText: View {
     let text: String
     var shouldAnimate: Bool = false
     let id: UUID
+    
+    @State private var shimmerPhase: CGFloat = 0
 
     var body: some View {
         ScrollView {
-            Text(text)
-                .font(.system(size: 16))
-                .foregroundColor(.primary)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                .padding(.top, 0)
+            ZStack(alignment: .topLeading) {
+                // Base text
+                Text(text)
+                    .font(.system(size: 16))
+                    .foregroundColor(.primary)
+                
+                // Shimmer overlay
+                if isLoading {
+                    Text(text)
+                        .font(.system(size: 16))
+                        .foregroundColor(.clear)
+                        .overlay(
+                            GeometryReader { geometry in
+                                let textWidth = geometry.size.width
+                                if textWidth > 0 {
+                                    LinearGradient(
+                                        gradient: Gradient(stops: [
+                                            .init(color: shimmerColor.opacity(0.0), location: 0.0),
+                                            .init(color: shimmerColor.opacity(0.0), location: 0.15),
+                                            .init(color: shimmerColor, location: 0.5),
+                                            .init(color: shimmerColor.opacity(0.0), location: 0.85),
+                                            .init(color: shimmerColor.opacity(0.0), location: 1.0)
+                                        ]),
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                    .frame(width: textWidth * 1.5)
+                                    .offset(x: shimmerPhase * textWidth * 2.2 - textWidth * 0.75)
+                                    .blendMode(shimmerBlendMode)
+                                    .opacity(shimmerOpacity)
+                                } else {
+                                    Color.clear
+                                }
+                            }
+                        )
+                        .mask(
+                            Text(text)
+                                .font(.system(size: 16))
+                        )
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .padding(.top, 0)
+            .onAppear {
+                if text == "Loading..." {
+                    startShimmer()
+                }
+            }
+            .onChange(of: text) { newValue in
+                if newValue == "Loading..." {
+                    startShimmer()
+                } else {
+                    shimmerPhase = 0
+                }
+            }
+        }
+    }
+    
+    private var shimmerColor: Color {
+        // Use opposite color - white for light mode, black for dark mode
+        if colorScheme == .dark {
+            // Black shimmer on white text in dark mode
+            return Color.black
+        } else {
+            // White shimmer on black text in light mode
+            return Color.white
+        }
+    }
+    
+    private var shimmerBlendMode: BlendMode {
+        // Use normal blend mode for both modes
+        .normal
+    }
+    
+    private var shimmerOpacity: Double {
+        // Higher opacity for better visibility
+        colorScheme == .dark ? 0.7 : 0.8
+    }
+    
+    private var isLoading: Bool {
+        text == "Loading..."
+    }
+    
+    @Environment(\.colorScheme) var colorScheme
+    
+    private func startShimmer() {
+        shimmerPhase = 0
+        DispatchQueue.main.async {
+            withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                shimmerPhase = 1.0
+            }
         }
     }
 }
