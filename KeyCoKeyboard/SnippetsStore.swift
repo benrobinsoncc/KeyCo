@@ -148,7 +148,14 @@ final class SnippetsStore: ObservableObject {
     }
 
     private func seedDefaultsIfNeeded() {
-        guard snippets.isEmpty else { return }
+        // Only seed if UserDefaults doesn't have the key at all (first launch)
+        // If the key exists (even if empty), respect the user's data
+        guard userDefaults.object(forKey: storageKey) == nil else {
+            NSLog("[SnippetsStore] UserDefaults key exists, skipping seed (preserving existing data)")
+            return
+        }
+        
+        NSLog("[SnippetsStore] First launch detected - seeding default snippets")
         var seeded: [Snippet] = []
         func make(_ title: String, _ text: String, _ pinned: Bool = false) {
             seeded.append(Snippet(id: UUID(), title: title, text: text, pinned: pinned, lastUsed: nil))
