@@ -234,7 +234,7 @@ struct HomeView: View {
                 .padding(.bottom, 20)
             }
             .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("KeyCo")
+            .navigationTitle("Keyboard Copilot")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -266,8 +266,10 @@ struct HomeView: View {
     }
 
     private func shareApp() {
-        // Share app link
-        let appURL = URL(string: "https://apps.apple.com/app/keyco")!
+        // Share app link - update with actual App Store URL after app is approved
+        // For now, share TestFlight link or disable until app is live
+        // TODO: Update with actual App Store URL: "https://apps.apple.com/app/keyboard-copilot"
+        let appURL = URL(string: "https://testflight.apple.com")! // Placeholder
         let activityVC = UIActivityViewController(activityItems: [appURL], applicationActivities: nil)
 
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,

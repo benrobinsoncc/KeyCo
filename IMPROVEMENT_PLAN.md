@@ -55,9 +55,9 @@ let appURL = URL(string: "https://apps.apple.com/app/keyco")!
 - Create privacy policy document/page
 - Add URL to App Store Connect → App Privacy section
 - Consider what data you collect:
-  - User text (sent to backend for AI processing)
-  - API keys (stored in keychain)
-  - Snippets (stored locally)
+  - User text (sent to backend for AI processing via HTTPS)
+  - Snippets (stored locally in App Group UserDefaults)
+  - No API keys stored on device (API keys are server-side on Vercel)
   - Usage analytics (if any)
 
 ## ⚠️ High Priority Improvements
@@ -165,8 +165,7 @@ private func checkKeyboardStatus() {
 - [ ] Test all modes (write, google, chatgpt, snippets)
 - [ ] Test error scenarios (no internet, API failures)
 - [ ] Test snippet creation/editing/deletion
-- [ ] Test app group data sharing
-- [ ] Test keychain access
+- [ ] Test app group data sharing (snippets sync between main app and keyboard extension via App Group UserDefaults)
 
 ### Before App Store:
 - [ ] Test on physical devices (not just simulator)

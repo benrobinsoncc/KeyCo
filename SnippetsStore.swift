@@ -120,12 +120,10 @@ final class SnippetsStore: ObservableObject {
             seeded.append(Snippet(id: UUID(), title: title, text: text, pinned: pinned, lastUsed: nil))
         }
 
-        // Minimal helpful defaults; replace values as needed later
-        make("Email", "ben@benrobinson.cc", true)
-        make("Website", "https://www.benrobinson.cc")
-        make("Phone", "+44 0000 000000")
-        make("Address", "123 Example Street, London, UK")
-        make("Not interested", "Thanks for reaching out. I'm not interested in this role right now.")
+        // Minimal helpful defaults - generic examples
+        make("Email", "your.email@example.com", true)
+        make("Phone", "+1 (555) 000-0000")
+        make("Address", "123 Main Street, City, State")
 
         snippets = seeded
         persist()

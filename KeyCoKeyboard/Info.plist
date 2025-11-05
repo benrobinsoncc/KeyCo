@@ -22,10 +22,5 @@
 		<key>NSExtensionPrincipalClass</key>
 		<string>$(PRODUCT_MODULE_NAME).KeyboardViewController</string>
 	</dict>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<!-- HTTPS is required for keyco-backend.vercel.app -->
-		<!-- No exceptions needed as backend uses HTTPS -->
-	</dict>
 </dict>
 </plist>
