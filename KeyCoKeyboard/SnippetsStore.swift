@@ -65,7 +65,8 @@ final class SnippetsStore: ObservableObject {
     @discardableResult
     func add(title: String, text: String, pinned: Bool = false) -> Snippet {
         let item = Snippet(id: UUID(), title: title, text: text, pinned: pinned, lastUsed: nil)
-        snippets.append(item)
+        // Insert at the beginning so new snippets appear at the top
+        snippets.insert(item, at: 0)
         persist()
         return item
     }

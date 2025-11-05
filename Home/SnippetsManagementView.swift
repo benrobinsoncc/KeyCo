@@ -14,10 +14,26 @@ struct SnippetsManagementView: View {
                     }, onDelete: { snippetToDelete in
                         store.delete(id: snippetToDelete.id)
                     })
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button(role: .destructive) {
+                            store.delete(id: snippet.id)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        
+                        Button {
+                            editingSnippet = snippet
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                        .tint(.blue)
+                    }
                 }
                 .onDelete(perform: deleteSnippets)
+                .onMove(perform: moveSnippets)
             }
             .navigationTitle("Snippets")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -25,9 +41,17 @@ struct SnippetsManagementView: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "plus")
+                                .font(.system(size: 14, weight: .semibold))
                             Text("New")
+                                .font(.system(size: 15, weight: .semibold))
                         }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.accentColor)
+                        .clipShape(Capsule())
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .sheet(isPresented: $showingAddSheet) {
@@ -63,10 +87,12 @@ struct SnippetsManagementView: View {
     private func deleteSnippets(at offsets: IndexSet) {
         let snippets = store.getAll()
         for index in offsets {
-            if let id = snippets[index].id as? UUID {
-                store.delete(id: id)
-            }
+            store.delete(id: snippets[index].id)
         }
+    }
+    
+    private func moveSnippets(from source: IndexSet, to destination: Int) {
+        store.move(from: source, to: destination)
     }
 }
 
@@ -89,6 +115,11 @@ struct SnippetRow: View {
             }
             .padding(.vertical, 4)
             Spacer()
+            
+            // Reorder icon
+            Image(systemName: "line.3.horizontal")
+                .foregroundStyle(Color(uiColor: .tertiaryLabel))
+                .font(.system(size: 16))
         }
         .contentShape(Rectangle())
         .onTapGesture {

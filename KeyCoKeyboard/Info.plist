@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>KeyCo</string>
+	<string>Keyboard Copilot</string>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionAttributes</key>
@@ -24,8 +24,8 @@
 	</dict>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
+		<!-- HTTPS is required for keyco-backend.vercel.app -->
+		<!-- No exceptions needed as backend uses HTTPS -->
 	</dict>
 </dict>
 </plist>
