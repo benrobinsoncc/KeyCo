@@ -41,14 +41,16 @@ struct SnippetsManagementView: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "plus")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.system(size: 11, weight: .semibold))
                             Text("New")
                                 .font(.system(size: 15, weight: .semibold))
                         }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.accentColor)
+                        .foregroundColor(Color(uiColor: UIColor { trait in
+                            trait.userInterfaceStyle == .dark ? .black : .white
+                        }))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color(uiColor: .label))
                         .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)

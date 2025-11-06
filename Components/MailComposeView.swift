@@ -4,6 +4,7 @@ import MessageUI
 struct MailComposeView: UIViewControllerRepresentable {
     let recipient: String
     let subject: String
+    let messageBody: String
     @Binding var isPresented: Bool
 
     class Coordinator: NSObject, MFMailComposeViewControllerDelegate {
@@ -27,6 +28,7 @@ struct MailComposeView: UIViewControllerRepresentable {
         composer.mailComposeDelegate = context.coordinator
         composer.setToRecipients([recipient])
         composer.setSubject(subject)
+        composer.setMessageBody(messageBody, isHTML: false)
         return composer
     }
 

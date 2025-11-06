@@ -19,6 +19,7 @@
 		524ADCF22EB5255000DE2382 /* SnippetsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCF12EB5255000DE2382 /* SnippetsStore.swift */; };
 		524ADCF32EB5255000DE2382 /* SnippetsManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCF02EB5255000DE2382 /* SnippetsManagementView.swift */; };
 		524ADCF72EB556DB00DE2382 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCF62EB556DB00DE2382 /* KeychainHelper.swift */; };
+		524ADCFB2EBD0EA400DE2382 /* KeyboardSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524ADCFA2EBD0EA400DE2382 /* KeyboardSetupView.swift */; };
 		52E5DE7A2EA94A510021BC48 /* Shimmer in Frameworks */ = {isa = PBXBuildFile; productRef = 52E5DE792EA94A510021BC48 /* Shimmer */; };
 		52E5DE7C2EA94A5D0021BC48 /* Shimmer in Frameworks */ = {isa = PBXBuildFile; productRef = 52E5DE7B2EA94A5D0021BC48 /* Shimmer */; };
 		52E5DE7F2EA969970021BC48 /* AnimateText in Frameworks */ = {isa = PBXBuildFile; productRef = 52E5DE7E2EA969970021BC48 /* AnimateText */; };
@@ -77,6 +78,7 @@
 		524ADCF62EB556DB00DE2382 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		524ADCF82EB559CF00DE2382 /* KeyCo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KeyCo.entitlements; sourceTree = "<group>"; };
 		524ADCF92EB559F700DE2382 /* KeyCoKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KeyCoKeyboard.entitlements; sourceTree = "<group>"; };
+		524ADCFA2EBD0EA400DE2382 /* KeyboardSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardSetupView.swift; sourceTree = "<group>"; };
 		A1000002000000000000001 /* KeyCoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCoApp.swift; sourceTree = "<group>"; };
 		A1000004000000000000001 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A1000006000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -156,6 +158,7 @@
 		A1000021000000000000001 = {
 			isa = PBXGroup;
 			children = (
+				524ADCFA2EBD0EA400DE2382 /* KeyboardSetupView.swift */,
 				524ADCF62EB556DB00DE2382 /* KeychainHelper.swift */,
 				524ADCF02EB5255000DE2382 /* SnippetsManagementView.swift */,
 				524ADCF12EB5255000DE2382 /* SnippetsStore.swift */,
@@ -335,6 +338,7 @@
 				524ADCDA2EAD2A3800DE2382 /* PrimaryButton.swift in Sources */,
 				524ADCDD2EAD2A3800DE2382 /* AppDelegate.swift in Sources */,
 				524ADCE02EAD2A3800DE2382 /* MailComposeView.swift in Sources */,
+				524ADCFB2EBD0EA400DE2382 /* KeyboardSetupView.swift in Sources */,
 				524ADCE22EAD2A3800DE2382 /* HomeView.swift in Sources */,
 				524ADCF72EB556DB00DE2382 /* KeychainHelper.swift in Sources */,
 				524ADCE32EAD2A3800DE2382 /* WelcomeView.swift in Sources */,
