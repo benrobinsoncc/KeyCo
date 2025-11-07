@@ -1,34 +1,30 @@
 import SwiftUI
+import UIKit
 
 struct KeyboardSetupView: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        // Video space at top
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color.gray.opacity(0.2))
-                            .frame(height: 200)
-                            .overlay(
-                                Image(systemName: "play.circle.fill")
-                                    .font(.system(size: 48))
-                                    .foregroundStyle(Color.gray.opacity(0.5))
-                            )
-                            .padding(.horizontal, 20)
-                            .padding(.top, 20)
-                        
-                        Spacer()
-                            .frame(minHeight: 100)
-                    }
-                }
+            GeometryReader { geometry in
+                VStack(spacing: 0) {
+                    // Video space at top - fills available space
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.gray.opacity(0.2))
+                        .overlay(
+                            Image(systemName: "play.circle.fill")
+                                .font(.system(size: 48))
+                                .foregroundStyle(Color.gray.opacity(0.5))
+                        )
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                        .padding(.bottom, 12)
+                        .frame(maxHeight: .infinity)
                 
                 // Instructions and CTA at bottom
                 VStack(spacing: 0) {
-                    // 3 Steps Instructions
-                    VStack(alignment: .leading, spacing: 20) {
+                    // 4 Steps Instructions
+                    VStack(alignment: .leading, spacing: 12) {
                         StepView(
                             number: 1,
                             title: "Tap Open Settings button",
@@ -43,24 +39,36 @@ struct KeyboardSetupView: View {
                         
                         StepView(
                             number: 3,
-                            title: "Turn on access",
-                            description: "Toggle Keyboard Copilot & Allow Full Access"
+                            title: "Toggle Keyboard Copilot",
+                            description: nil
+                        )
+                        
+                        StepView(
+                            number: 4,
+                            title: "Toggle Allow Full Access",
+                            description: nil
                         )
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 24)
-                    .padding(.bottom, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 28)
                     
                     // Open Settings CTA
-                    Button(action: openSettings) {
+                    Button(action: {
+                        // Trigger haptic feedback immediately
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.prepare()
+                        generator.impactOccurred()
+                        openSettings()
+                    }) {
                         Text("Open Settings")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(Color(uiColor: .systemBackground))
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
                             .background(
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(Color.black)
+                                    .fill(Color(uiColor: .label))
                             )
                     }
                     .buttonStyle(.plain)
@@ -68,14 +76,15 @@ struct KeyboardSetupView: View {
                     .padding(.bottom, 16)
                     .background(Color(uiColor: .systemGroupedBackground))
                 }
-            }
-            .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("Setup keyboard")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
+                }
+                .background(Color(uiColor: .systemGroupedBackground))
+                .navigationTitle("Setup keyboard")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            dismiss()
+                        }
                     }
                 }
             }
@@ -83,6 +92,11 @@ struct KeyboardSetupView: View {
     }
     
     private func openSettings() {
+        // Add haptic feedback
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.prepare()
+        generator.impactOccurred()
+        
         if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(settingsURL)
         }
@@ -95,22 +109,22 @@ struct StepView: View {
     let description: String?
     
     var body: some View {
-        HStack(alignment: .center, spacing: 16) {
+        HStack(alignment: .center, spacing: 12) {
             // Step number circle
             ZStack {
                 Circle()
-                    .fill(Color.black)
-                    .frame(width: 32, height: 32)
+                    .fill(Color.gray.opacity(0.15))
+                    .frame(width: 26, height: 26)
                 
                 Text("\(number)")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+                    .font(.system(size: 14))
+                    .foregroundColor(Color(uiColor: .label))
             }
             
             // Step content
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.headline)
+                    .font(.body)
                     .foregroundStyle(Color(uiColor: .label))
                 
                 if let description = description {

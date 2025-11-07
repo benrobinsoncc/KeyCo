@@ -1,5 +1,6 @@
 import UIKit
 import SwiftUI
+import AnimateText
 
 /// Content view for displaying mode title and response text
 final class ResponseContentView: UIView {
@@ -188,62 +189,86 @@ struct AnimatedResponseText: View {
     let id: UUID
     
     @State private var shimmerPhase: CGFloat = 0
+    @State private var animatedText: String = ""
 
     var body: some View {
         ScrollView {
-            ZStack(alignment: .topLeading) {
-                // Base text
-                Text(text)
-                    .font(.system(size: 16))
-                    .foregroundColor(.primary)
-                
-                // Shimmer overlay
-                if isLoading {
-                    Text(text)
-                        .font(.system(size: 16))
-                        .foregroundColor(.clear)
-                        .overlay(
-                            GeometryReader { geometry in
-                                let textWidth = geometry.size.width
-                                if textWidth > 0 {
-                                    LinearGradient(
-                                        gradient: Gradient(stops: [
-                                            .init(color: shimmerColor.opacity(0.0), location: 0.0),
-                                            .init(color: shimmerColor.opacity(0.0), location: 0.15),
-                                            .init(color: shimmerColor, location: 0.5),
-                                            .init(color: shimmerColor.opacity(0.0), location: 0.85),
-                                            .init(color: shimmerColor.opacity(0.0), location: 1.0)
-                                        ]),
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                    .frame(width: textWidth * 1.5)
-                                    .offset(x: shimmerPhase * textWidth * 2.2 - textWidth * 0.75)
-                                    .blendMode(shimmerBlendMode)
-                                    .opacity(shimmerOpacity)
-                                } else {
-                                    Color.clear
+            GeometryReader { geometry in
+                ZStack(alignment: .topLeading) {
+                    // Base text with blur effect animation when AI response loads
+                    if isLoading {
+                        // Loading state - show shimmer effect (unchanged)
+                        Text(text)
+                            .font(.system(size: 16))
+                            .foregroundColor(.primary)
+                            .frame(width: geometry.size.width - 24, alignment: .topLeading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.leading, 12)
+                    } else {
+                        // AI response loaded - apply blur effect animation
+                        // Use AnimateText for proper letter-by-letter blur effect
+                        AnimateText<ATBlurEffect>($animatedText, type: .letters)
+                            .font(.system(size: 16))
+                            .foregroundColor(.primary)
+                            .frame(width: geometry.size.width - 24, alignment: .topLeading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.leading, 12)
+                    }
+                    
+                    // Shimmer overlay (only for loading state)
+                    if isLoading {
+                        Text(text)
+                            .font(.system(size: 16))
+                            .foregroundColor(.clear)
+                            .frame(width: geometry.size.width - 24, alignment: .topLeading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.leading, 12)
+                            .overlay(
+                                GeometryReader { shimmerGeometry in
+                                    let textWidth = shimmerGeometry.size.width
+                                    if textWidth > 0 {
+                                        LinearGradient(
+                                            gradient: Gradient(stops: [
+                                                .init(color: shimmerColor.opacity(0.0), location: 0.0),
+                                                .init(color: shimmerColor.opacity(0.0), location: 0.15),
+                                                .init(color: shimmerColor, location: 0.5),
+                                                .init(color: shimmerColor.opacity(0.0), location: 0.85),
+                                                .init(color: shimmerColor.opacity(0.0), location: 1.0)
+                                            ]),
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                        .frame(width: textWidth * 1.5)
+                                        .offset(x: shimmerPhase * textWidth * 2.2 - textWidth * 0.75)
+                                        .blendMode(shimmerBlendMode)
+                                        .opacity(shimmerOpacity)
+                                    } else {
+                                        Color.clear
+                                    }
                                 }
-                            }
-                        )
-                        .mask(
-                            Text(text)
-                                .font(.system(size: 16))
-                        )
+                            )
+                            .mask(
+                                Text(text)
+                                    .font(.system(size: 16))
+                            )
+                    }
                 }
+                .frame(width: geometry.size.width, alignment: .topLeading)
             }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity)
             .padding(.top, 0)
-            .onAppear {
-                if text == "Loading..." {
-                    startShimmer()
-                }
-            }
             .onChange(of: text) { newValue in
                 if newValue == "Loading..." {
                     startShimmer()
-                } else {
+                } else if !newValue.isEmpty {
                     shimmerPhase = 0
+                    animatedText = newValue
+                }
+            }
+            .onAppear {
+                animatedText = text
+                if text == "Loading..." {
+                    startShimmer()
                 }
             }
         }

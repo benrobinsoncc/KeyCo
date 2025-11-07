@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct SnippetsManagementView: View {
     @StateObject private var store = SnippetsStore.shared
@@ -32,11 +33,15 @@ struct SnippetsManagementView: View {
                 .onDelete(perform: deleteSnippets)
                 .onMove(perform: moveSnippets)
             }
-            .navigationTitle("Snippets")
+            .navigationTitle("Paste")
             .navigationBarTitleDisplayMode(.inline)
+            .contentMargins(.top, 4, for: .scrollContent)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.prepare()
+                        generator.impactOccurred()
                         showingAddSheet = true
                     } label: {
                         HStack(spacing: 4) {
@@ -125,6 +130,9 @@ struct SnippetRow: View {
         }
         .contentShape(Rectangle())
         .onTapGesture {
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.prepare()
+            generator.impactOccurred()
             onEdit(snippet)
         }
         .contextMenu {

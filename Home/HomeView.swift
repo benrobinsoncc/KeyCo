@@ -1,5 +1,6 @@
 import SwiftUI
 import MessageUI
+import UIKit
 
 struct HomeView: View {
     @StateObject private var appState = AppState.shared
@@ -19,6 +20,9 @@ struct HomeView: View {
                     HStack(spacing: 16) {
                         // Keyboard Status Card
                         Button(action: {
+                            let generator = UIImpactFeedbackGenerator(style: .light)
+                            generator.prepare()
+                            generator.impactOccurred()
                             showingKeyboardSetup = true
                         }) {
                             VStack(alignment: .leading, spacing: 0) {
@@ -55,6 +59,9 @@ struct HomeView: View {
                         
                         // Snippets Card
                         Button(action: {
+                            let generator = UIImpactFeedbackGenerator(style: .light)
+                            generator.prepare()
+                            generator.impactOccurred()
                             showingSnippets = true
                         }) {
                             VStack(alignment: .leading, spacing: 0) {
@@ -100,6 +107,9 @@ struct HomeView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.prepare()
+                        generator.impactOccurred()
                         if MFMailComposeViewController.canSendMail() {
                             showingMailComposer = true
                         } else {

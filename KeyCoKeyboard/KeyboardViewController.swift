@@ -16,11 +16,33 @@ class KeyboardViewController: UIInputViewController {
 
     private enum KeyboardHeight: CGFloat {
         case small = 255  // Aligned with default UK English keyboard
-        case large = 500
+        case large = 650
     }
 
     private var currentMode: KeyboardMode = .home
     private var currentHeight: KeyboardHeight = .small
+    
+    // Store the desired preferredContentSize
+    private var _preferredContentSize: CGSize = CGSize(width: 0, height: 0)
+    
+    // Override preferredContentSize to ensure Google mode gets correct height
+    override var preferredContentSize: CGSize {
+        get {
+            // If we have a stored value and we're in Google mode with large height, use it
+            if currentMode == .google && currentHeight == .large && _preferredContentSize.height > 0 {
+                return _preferredContentSize
+            }
+            // Otherwise use super's value or calculate
+            if _preferredContentSize.height > 0 {
+                return _preferredContentSize
+            }
+            return super.preferredContentSize
+        }
+        set {
+            _preferredContentSize = newValue
+            super.preferredContentSize = newValue
+        }
+    }
 
     // UI Components
     private var heightConstraint: NSLayoutConstraint!
@@ -162,6 +184,13 @@ class KeyboardViewController: UIInputViewController {
             NSLog("[KeyCo] viewWillAppear - reloading snippets from storage")
             SnippetsStore.shared.reload()
         }
+        
+        // Update preferredContentSize when view appears
+        let targetHeight = containerHeight(for: currentHeight)
+        let width = view.bounds.width > 0 ? view.bounds.width : UIScreen.main.bounds.width
+        preferredContentSize = CGSize(width: width, height: targetHeight)
+        NSLog("[KeyCo] viewWillAppear - Setting preferredContentSize to width: \(width), height: \(targetHeight)")
+        
         DispatchQueue.main.async { [weak self] in
             self?.forceKeyboardRefresh()
         }
@@ -169,6 +198,34 @@ class KeyboardViewController: UIInputViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        
+        // Update preferredContentSize when view appears - this is critical for iOS to recognize the height
+        let targetHeight = containerHeight(for: currentHeight)
+        let width = view.bounds.width > 0 ? view.bounds.width : UIScreen.main.bounds.width
+        preferredContentSize = CGSize(width: width, height: targetHeight)
+        heightConstraint?.constant = targetHeight
+        NSLog("[KeyCo] viewDidAppear - Mode: \(currentMode), Setting preferredContentSize to width: \(width), height: \(targetHeight), actual view height: \(view.bounds.height), preferredContentSize after: \(preferredContentSize)")
+        
+        // For Google mode, aggressively force the height multiple times
+        if currentMode == .google && currentHeight == .large {
+            let googleHeight = containerHeight(for: .large)
+            preferredContentSize = CGSize(width: width, height: googleHeight)
+            heightConstraint?.constant = googleHeight
+            view.setNeedsLayout()
+            view.layoutIfNeeded()
+            NSLog("[KeyCo] viewDidAppear(google) - Force setting preferredContentSize to height: \(googleHeight)")
+            
+            // Force another update after delays to ensure iOS picks it up
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                guard let self = self, self.currentMode == .google, self.currentHeight == .large else { return }
+                let width = self.view.bounds.width > 0 ? self.view.bounds.width : UIScreen.main.bounds.width
+                self.preferredContentSize = CGSize(width: width, height: googleHeight)
+                self.heightConstraint?.constant = googleHeight
+                self.view.setNeedsLayout()
+                self.view.layoutIfNeeded()
+            }
+        }
+        
         // Additional refresh after view appears
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             self?.forceKeyboardRefresh()
@@ -178,14 +235,43 @@ class KeyboardViewController: UIInputViewController {
     // MARK: - Keyboard Extension Lifecycle
     
     override func textWillChange(_ textInput: UITextInput?) {
+        // Set preferredContentSize BEFORE calling super - this is critical
+        let targetHeight = containerHeight(for: currentHeight)
+        let width = view.bounds.width > 0 ? view.bounds.width : UIScreen.main.bounds.width
+        super.preferredContentSize = CGSize(width: width, height: targetHeight)
+        heightConstraint?.constant = targetHeight
+        
         super.textWillChange(textInput)
-        // Called when keyboard is about to become active
+        
+        NSLog("[KeyCo] textWillChange - Mode: \(currentMode), Height: \(currentHeight.rawValue), Set preferredContentSize to height: \(targetHeight)")
         forceKeyboardRefresh()
     }
     
     override func textDidChange(_ textInput: UITextInput?) {
+        // Set preferredContentSize BEFORE calling super - this is critical
+        let targetHeight = containerHeight(for: currentHeight)
+        let width = view.bounds.width > 0 ? view.bounds.width : UIScreen.main.bounds.width
+        super.preferredContentSize = CGSize(width: width, height: targetHeight)
+        heightConstraint?.constant = targetHeight
+        
         super.textDidChange(textInput)
-        // Called when keyboard becomes active
+        
+        NSLog("[KeyCo] textDidChange - Mode: \(currentMode), Height: \(currentHeight.rawValue), Set preferredContentSize to height: \(targetHeight)")
+        
+        // For Google mode, force another update after a brief delay
+        if currentMode == .google && currentHeight == .large {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                guard let self = self, self.currentMode == .google, self.currentHeight == .large else { return }
+                let googleHeight = self.containerHeight(for: .large)
+                let width = self.view.bounds.width > 0 ? self.view.bounds.width : UIScreen.main.bounds.width
+                self.preferredContentSize = CGSize(width: width, height: googleHeight)
+                self.heightConstraint?.constant = googleHeight
+                self.view.setNeedsLayout()
+                self.view.layoutIfNeeded()
+                NSLog("[KeyCo] textDidChange(google) - Delayed preferredContentSize update to height: \(googleHeight)")
+            }
+        }
+        
         forceKeyboardRefresh()
     }
     
@@ -197,9 +283,17 @@ class KeyboardViewController: UIInputViewController {
         view.backgroundColor = .clear
 
         // Set initial height
-        heightConstraint = view.heightAnchor.constraint(equalToConstant: containerHeight(for: currentHeight))
+        let initialHeight = containerHeight(for: currentHeight)
+        
+        // Set initial height constraint
+        heightConstraint = view.heightAnchor.constraint(equalToConstant: initialHeight)
         heightConstraint.priority = .required
         heightConstraint.isActive = true
+        
+        // Set preferredContentSize so iOS recognizes the keyboard height
+        let width = view.bounds.width > 0 ? view.bounds.width : UIScreen.main.bounds.width
+        preferredContentSize = CGSize(width: width, height: initialHeight)
+        NSLog("[KeyCo] setupKeyboard - Setting preferredContentSize to width: \(width), height: \(initialHeight)")
 
         // Setup container
         setupContainer()
@@ -708,6 +802,24 @@ class KeyboardViewController: UIInputViewController {
         if currentHeight != targetHeight {
             currentHeight = targetHeight
             updateHeight(animated: shouldAnimateHeight)
+            
+            // For Google mode, aggressively set preferredContentSize multiple times
+            if mode == .google {
+                let googleHeight = containerHeight(for: .large)
+                let width = view.bounds.width > 0 ? view.bounds.width : UIScreen.main.bounds.width
+                preferredContentSize = CGSize(width: width, height: googleHeight)
+                NSLog("[KeyCo] switchToMode(google) - Force setting preferredContentSize to height: \(googleHeight)")
+                
+                // Force another update after a short delay to ensure iOS picks it up
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                    guard let self = self, self.currentMode == .google else { return }
+                    self.preferredContentSize = CGSize(width: width, height: googleHeight)
+                    self.heightConstraint?.constant = googleHeight
+                    self.view.setNeedsLayout()
+                    self.view.layoutIfNeeded()
+                    NSLog("[KeyCo] switchToMode(google) - Delayed preferredContentSize update to height: \(googleHeight)")
+                }
+            }
         } else if !shouldAnimateHeight {
             updateHeight(animated: false)
         }
@@ -763,7 +875,14 @@ class KeyboardViewController: UIInputViewController {
 
     private func updateHeight(animated: Bool) {
         let newHeight = containerHeight(for: currentHeight)
+        
+        // Update constraint first
         heightConstraint.constant = newHeight
+        
+        // Set preferredContentSize so iOS recognizes the keyboard height
+        let width = view.bounds.width > 0 ? view.bounds.width : UIScreen.main.bounds.width
+        preferredContentSize = CGSize(width: width, height: newHeight)
+        NSLog("[KeyCo] updateHeight - Mode: \(currentMode), Height: \(currentHeight.rawValue), Setting preferredContentSize to width: \(width), height: \(newHeight), actual preferredContentSize: \(preferredContentSize)")
         
         // Force the view controller to recognize the new size
         view.setNeedsLayout()
@@ -847,8 +966,11 @@ class KeyboardViewController: UIInputViewController {
         // Force complete layout refresh
         let targetHeight = containerHeight(for: currentHeight)
         
-        // Update height constraint
+        // Set preferredContentSize and constraint to match current mode
+        let width = view.bounds.width > 0 ? view.bounds.width : UIScreen.main.bounds.width
+        preferredContentSize = CGSize(width: width, height: targetHeight)
         heightConstraint?.constant = targetHeight
+        NSLog("[KeyCo] forceKeyboardRefresh - Mode: \(currentMode), Height: \(currentHeight.rawValue), Setting preferredContentSize to height: \(targetHeight)")
         
         // Force all views to update their layouts
         view.setNeedsLayout()
@@ -1541,73 +1663,29 @@ class KeyboardViewController: UIInputViewController {
         button.isEnabled = false
         button.tintColor = .label
         
-        // Store reference to imageView
-        guard let imageView = button.imageView else { return }
-        
         // Create checkmark image with black color baked in
         let checkmarkImage = createColoredSymbolImage(systemName: "checkmark", color: .label)
         
-        // Smooth SF Symbols-style animation: scale down + fade out
-        UIView.animate(withDuration: 0.15, delay: 0, options: [.curveEaseIn], animations: {
-            imageView.transform = CGAffineTransform(scaleX: 0.3, y: 0.3)
-            imageView.alpha = 0.0
-        }) { _ in
-            // Change icon without animation
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
+        // Use crossfade transition for smooth icon change
+        UIView.transition(with: button, duration: 0.2, options: [.transitionCrossDissolve, .allowUserInteraction], animations: {
             button.setImage(checkmarkImage, for: .normal)
             button.setImage(checkmarkImage, for: .disabled)
-            button.tintColor = .label
-            CATransaction.commit()
-            
-            // Get fresh reference and set initial state
-            if let newImageView = button.imageView {
-                newImageView.transform = CGAffineTransform(scaleX: 0.3, y: 0.3)
-                newImageView.alpha = 0.0
-                
-                // Scale up + fade in with spring animation
-                UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.5, options: [.curveEaseOut], animations: {
-                    newImageView.transform = .identity
-                    newImageView.alpha = 1.0
-                })
-            }
-        }
+        })
         
         // After delay, animate back to copy icon
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { [weak self] in
             guard let button = self?.chatgptCopyButton else { return }
             guard let self = self else { return }
-            guard let imageView = button.imageView else { return }
             
             // Create copy image with black color baked in
             let copyImage = self.createColoredSymbolImage(systemName: "doc.on.doc", color: .label)
             
-            // Smooth animation back: scale down + fade out
-            UIView.animate(withDuration: 0.15, delay: 0, options: [.curveEaseIn], animations: {
-                imageView.transform = CGAffineTransform(scaleX: 0.3, y: 0.3)
-                imageView.alpha = 0.0
-            }) { _ in
-                // Change icon without animation
-                CATransaction.begin()
-                CATransaction.setDisableActions(true)
+            // Use crossfade transition for smooth icon change back
+            UIView.transition(with: button, duration: 0.2, options: [.transitionCrossDissolve, .allowUserInteraction], animations: {
                 button.setImage(copyImage, for: .normal)
                 button.setImage(copyImage, for: .disabled)
-                button.tintColor = .label
-                CATransaction.commit()
-                
-                // Get fresh reference and set initial state
-                if let newImageView = button.imageView {
-                    newImageView.transform = CGAffineTransform(scaleX: 0.3, y: 0.3)
-                    newImageView.alpha = 0.0
-                    
-                    // Scale up + fade in with spring animation
-                    UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.5, options: [.curveEaseOut], animations: {
-                        newImageView.transform = .identity
-                        newImageView.alpha = 1.0
-                    }) { _ in
-                        button.isEnabled = true
-                    }
-                }
+            }) { _ in
+                button.isEnabled = true
             }
         }
     }
