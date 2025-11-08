@@ -9,13 +9,8 @@ struct KeyboardSetupView: View {
             GeometryReader { geometry in
                 VStack(spacing: 0) {
                     // Video space at top - fills available space
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.gray.opacity(0.2))
-                        .overlay(
-                            Image(systemName: "play.circle.fill")
-                                .font(.system(size: 48))
-                                .foregroundStyle(Color.gray.opacity(0.5))
-                        )
+                    LoopingVideoPlayer()
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .padding(.horizontal, 20)
                         .padding(.top, 8)
                         .padding(.bottom, 12)
@@ -27,7 +22,7 @@ struct KeyboardSetupView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         StepView(
                             number: 1,
-                            title: "Tap Open Settings button",
+                            title: "Tap Open Settings below",
                             description: nil
                         )
                         
@@ -107,13 +102,21 @@ struct StepView: View {
     let number: Int
     let title: String
     let description: String?
+    let circleBackgroundColor: Color
+    
+    init(number: Int, title: String, description: String?, circleBackgroundColor: Color = Color(uiColor: .systemGray5)) {
+        self.number = number
+        self.title = title
+        self.description = description
+        self.circleBackgroundColor = circleBackgroundColor
+    }
     
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             // Step number circle
             ZStack {
                 Circle()
-                    .fill(Color.gray.opacity(0.15))
+                    .fill(circleBackgroundColor)
                     .frame(width: 26, height: 26)
                 
                 Text("\(number)")

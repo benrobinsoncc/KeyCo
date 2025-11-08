@@ -10,13 +10,8 @@ struct OnboardingSetupView: View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
                 // Video space at top - fills available space
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.gray.opacity(0.2))
-                    .overlay(
-                        Image(systemName: "play.circle.fill")
-                            .font(.system(size: 48))
-                            .foregroundStyle(Color.gray.opacity(0.5))
-                    )
+                LoopingVideoPlayer()
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
                     .padding(.bottom, 12)
@@ -29,25 +24,29 @@ struct OnboardingSetupView: View {
                         StepView(
                             number: 1,
                             title: "Tap Open Settings below",
-                            description: nil
+                            description: nil,
+                            circleBackgroundColor: Color(uiColor: .systemGray5)
                         )
                         
                         StepView(
                             number: 2,
                             title: "Tap Keyboards",
-                            description: nil
+                            description: nil,
+                            circleBackgroundColor: Color(uiColor: .systemGray5)
                         )
                         
                         StepView(
                             number: 3,
                             title: "Toggle Keyboard Copilot",
-                            description: nil
+                            description: nil,
+                            circleBackgroundColor: Color(uiColor: .systemGray5)
                         )
                         
                         StepView(
                             number: 4,
                             title: "Toggle Allow Full Access",
-                            description: nil
+                            description: nil,
+                            circleBackgroundColor: Color(uiColor: .systemGray5)
                         )
                     }
                     .padding(.horizontal, 20)
