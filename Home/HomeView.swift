@@ -105,6 +105,18 @@ struct HomeView: View {
             .navigationTitle("Keyboard Copilot")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.prepare()
+                        generator.impactOccurred()
+                        showingOnboarding = true
+                    } label: {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 16))
+                            .foregroundStyle(Color(uiColor: .label))
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         let generator = UIImpactFeedbackGenerator(style: .light)
@@ -142,6 +154,9 @@ struct HomeView: View {
             }
             .sheet(isPresented: $showingSnippets) {
                 SnippetsManagementView()
+            }
+            .fullScreenCover(isPresented: $showingOnboarding) {
+                OnboardingFlowView()
             }
             .onAppear {
                 // Simple keyboard check - always show active for now
