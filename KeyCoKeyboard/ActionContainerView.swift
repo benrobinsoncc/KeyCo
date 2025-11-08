@@ -404,14 +404,25 @@ final class ActionContainerView: UIView {
         button.layer.cornerCurve = .continuous
         button.clipsToBounds = true
         button.titleLabel?.font = .systemFont(ofSize: isPrimary ? 15 : 13, weight: isPrimary ? .semibold : .medium)
-        button.titleLabel?.lineBreakMode = .byTruncatingTail
+        // For buttons with icons, use word wrapping to prevent clipping (button will expand to fit)
+        // For regular buttons, allow truncation
+        button.titleLabel?.lineBreakMode = symbolName != nil ? .byWordWrapping : .byTruncatingTail
         button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
         button.setTitle(title, for: .normal)
+        
+        // For buttons with icons, prevent truncation by allowing the button to size to content
+        if symbolName != nil {
+            button.titleLabel?.setContentCompressionResistancePriority(.required, for: .horizontal)
+            button.titleLabel?.setContentHuggingPriority(.required, for: .horizontal)
+            button.titleLabel?.numberOfLines = 1
+        }
 
         if let symbolName, let image = UIImage(systemName: symbolName) {
             button.setImage(image, for: .normal)
+            // Smaller size for arrowtriangle.down.fill icon (7pt instead of 12pt)
+            let iconSize: CGFloat = symbolName == "arrowtriangle.down.fill" ? 7 : 12
             button.setPreferredSymbolConfiguration(
-                UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold),
+                UIImage.SymbolConfiguration(pointSize: iconSize, weight: .semibold),
                 forImageIn: .normal
             )
             let secondaryBackground = UIColor { trait in
@@ -420,12 +431,13 @@ final class ActionContainerView: UIView {
             button.tintColor = isPrimary ? UIColor { trait in
                 trait.userInterfaceStyle == .dark ? UIColor.black : UIColor.white
             } : .label
-            if symbolName == "chevron.down" {
+            if symbolName == "arrowtriangle.down.fill" {
                 button.semanticContentAttribute = .forceRightToLeft
-                button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
-                // Add more space between label and chevron
-                button.imageEdgeInsets = UIEdgeInsets(top: 0, left: 4, bottom: 0, right: 0)
-                button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 4)
+                // Padding for Presets button (16pt on left and right)
+                button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
+                // Space between label and icon (6pt on each side = 12pt total)
+                button.imageEdgeInsets = UIEdgeInsets(top: 0, left: 6, bottom: 0, right: 0)
+                button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 6)
             } else {
                 button.imageEdgeInsets = UIEdgeInsets(top: 0, left: -4, bottom: 0, right: 4)
                 button.semanticContentAttribute = .forceLeftToRight
@@ -446,11 +458,26 @@ final class ActionContainerView: UIView {
             button.setTitleColor(.label, for: .normal)
         }
 
-        button.setContentHuggingPriority(.required, for: .horizontal)
-        button.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
-        
-        // Add minimum width constraint to prevent excessive compression
-        button.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
+        // For buttons with icons, allow them to expand to fit content naturally
+        if symbolName != nil {
+            // Allow button to grow to fit content, but never shrink below content size
+            // Low hugging priority = button can expand, required compression resistance = won't shrink
+            button.setContentHuggingPriority(.defaultLow, for: .horizontal)
+            button.setContentCompressionResistancePriority(.required, for: .horizontal)
+            // Ensure title label can expand to show full text
+            // Set a very large preferredMaxLayoutWidth so it doesn't constrain the text
+            button.titleLabel?.preferredMaxLayoutWidth = 1000
+            // Force title label to not truncate
+            button.titleLabel?.numberOfLines = 1
+            // Ensure the button's intrinsic content size accounts for full text
+            button.titleLabel?.adjustsFontSizeToFitWidth = false
+            // Button will size to its intrinsic content size based on actual text + icon + padding
+            // This automatically adapts to Dynamic Type font sizes
+        } else {
+            button.setContentHuggingPriority(.required, for: .horizontal)
+            button.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
+        }
         
         return button
     }

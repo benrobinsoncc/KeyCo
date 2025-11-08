@@ -48,6 +48,7 @@ final class APIClient {
         let text: String
         let tone: Float
         let length: Float
+        let preset: String?  // Optional preset identifier (e.g., "fix_grammar", "polish", "tweet")
     }
     
     struct ChatRequest {
@@ -290,11 +291,17 @@ final class APIClient {
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlRequest.timeoutInterval = Config.requestTimeout
         
-        let requestBody: [String: Any] = [
+        var requestBody: [String: Any] = [
             "text": request.text,
             "tone": Double(request.tone),
-            "length": Double(request.length)
+            "length": Double(request.length),
+            "locale": "en-GB"  // Default to UK English spelling
         ]
+        
+        // Add preset if provided
+        if let preset = request.preset {
+            requestBody["preset"] = preset
+        }
         
         guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else {
             DispatchQueue.main.async {

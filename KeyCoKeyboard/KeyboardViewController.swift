@@ -18,6 +18,12 @@ class KeyboardViewController: UIInputViewController {
         case small = 255  // Aligned with default UK English keyboard
         case large = 650
     }
+    
+    private enum WritePreset {
+        case fixGrammar
+        case polishWriting
+        case rephraseAsTweet
+    }
 
     private var currentMode: KeyboardMode = .home
     private var currentHeight: KeyboardHeight = .small
@@ -93,6 +99,12 @@ class KeyboardViewController: UIInputViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        // Mark that keyboard extension is active (for onboarding detection)
+        if let appGroupDefaults = UserDefaults(suiteName: "group.com.keyco") {
+            appGroupDefaults.set("true", forKey: "__keyco_keyboard_extension_active__")
+            appGroupDefaults.synchronize()
+        }
+
         // Test network connectivity
         NetworkTestHelper.testConnectivity()
         
@@ -155,10 +167,76 @@ class KeyboardViewController: UIInputViewController {
     }
     
     @objc private func appDidBecomeActive() {
-        // When the app becomes active (user returns from Safari), force a complete refresh
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-            self?.forceKeyboardRefresh()
+        // When the app becomes active (user returns from Safari), ensure we're in home mode
+        // and force a complete refresh to fix layout issues
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            guard let self = self else { return }
+            
+            // If we're in Google mode (user opened browser), switch back to home mode
+            if self.currentMode == .google {
+                NSLog("[KeyCo] appDidBecomeActive - Switching from Google mode to home mode")
+                // Force height update first
+                self.currentHeight = .small
+                self.updateHeight(animated: false)
+                // Then switch mode
+                self.currentMode = .home
+                self.updateModeVisibility()
+            }
+            
+            // Force complete layout refresh with aggressive updates
+            self.forceKeyboardRefresh()
+            
+            // Additional aggressive refresh after delay to ensure iOS picks up the changes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+                guard let self = self else { return }
+                self.forceAggressiveLayoutRefresh()
+            }
         }
+    }
+    
+    private func forceAggressiveLayoutRefresh() {
+        NSLog("[KeyCo] Force aggressive layout refresh")
+        
+        // Ensure we're in home mode with small height
+        if currentMode != .home {
+            currentMode = .home
+            updateModeVisibility()
+        }
+        if currentHeight != .small {
+            currentHeight = .small
+            updateHeight(animated: false)
+        }
+        
+        // Force view bounds update
+        let targetHeight = containerHeight(for: .small)
+        let width = view.bounds.width > 0 ? view.bounds.width : UIScreen.main.bounds.width
+        preferredContentSize = CGSize(width: width, height: targetHeight)
+        heightConstraint?.constant = targetHeight
+        
+        // Force all views to update
+        view.setNeedsUpdateConstraints()
+        view.updateConstraintsIfNeeded()
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+        
+        // Force contentArea and homeView to update
+        contentArea.setNeedsLayout()
+        contentArea.layoutIfNeeded()
+        homeView.setNeedsLayout()
+        homeView.layoutIfNeeded()
+        
+        // Force input view to update
+        if let inputView = view.superview {
+            inputView.setNeedsUpdateConstraints()
+            inputView.updateConstraintsIfNeeded()
+            inputView.setNeedsLayout()
+            inputView.layoutIfNeeded()
+        }
+        
+        // Update mode visibility again
+        updateModeVisibility()
+        
+        NSLog("[KeyCo] Aggressive layout refresh completed - view bounds: \(view.bounds), contentArea bounds: \(contentArea.bounds), homeView bounds: \(homeView.bounds)")
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -199,12 +277,26 @@ class KeyboardViewController: UIInputViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
+        // If we're returning from Google mode (after opening browser), ensure we're in home mode
+        if currentMode == .google {
+            NSLog("[KeyCo] viewDidAppear - Detected Google mode, switching to home mode")
+            currentHeight = .small
+            currentMode = .home
+            updateModeVisibility()
+        }
+        
         // Update preferredContentSize when view appears - this is critical for iOS to recognize the height
         let targetHeight = containerHeight(for: currentHeight)
         let width = view.bounds.width > 0 ? view.bounds.width : UIScreen.main.bounds.width
         preferredContentSize = CGSize(width: width, height: targetHeight)
         heightConstraint?.constant = targetHeight
         NSLog("[KeyCo] viewDidAppear - Mode: \(currentMode), Setting preferredContentSize to width: \(width), height: \(targetHeight), actual view height: \(view.bounds.height), preferredContentSize after: \(preferredContentSize)")
+        
+        // Force immediate layout update
+        view.setNeedsUpdateConstraints()
+        view.updateConstraintsIfNeeded()
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
         
         // For Google mode, aggressively force the height multiple times
         if currentMode == .google && currentHeight == .large {
@@ -223,6 +315,12 @@ class KeyboardViewController: UIInputViewController {
                 self.heightConstraint?.constant = googleHeight
                 self.view.setNeedsLayout()
                 self.view.layoutIfNeeded()
+            }
+        } else if currentMode == .home {
+            // For home mode, ensure layout is properly refreshed
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                guard let self = self, self.currentMode == .home else { return }
+                self.forceAggressiveLayoutRefresh()
             }
         }
         
@@ -530,6 +628,19 @@ class KeyboardViewController: UIInputViewController {
             messagePreviewLabel.trailingAnchor.constraint(lessThanOrEqualTo: writeContentView.trailingAnchor, constant: -85)
         ])
 
+        // Create presets menu (iOS displays bottom-to-top, so reverse order)
+        let presetsMenu = UIMenu(title: "", children: [
+            UIAction(title: "Rephrase as Tweet", handler: { [weak self] _ in
+                self?.applyPreset(.rephraseAsTweet)
+            }),
+            UIAction(title: "Polish writing", handler: { [weak self] _ in
+                self?.applyPreset(.polishWriting)
+            }),
+            UIAction(title: "Fix grammar & spelling", handler: { [weak self] _ in
+                self?.applyPreset(.fixGrammar)
+            })
+        ])
+        
         writeContainer = createActionContainer(
             title: nil,
             contentView: writeContentView,
@@ -541,9 +652,7 @@ class KeyboardViewController: UIInputViewController {
                     self?.undoWriteMode()
                 }),
                 .init(style: .spacer),
-                .init(style: .text(title: "Done", symbolName: nil, isPrimary: false), action: { [weak self] in
-                    self?.dismissWriteMode()
-                })
+                .init(style: .text(title: "Presets", symbolName: "arrowtriangle.down.fill", isPrimary: false), menu: presetsMenu, showsMenuAsPrimaryAction: true)
             ],
             showsToggle: false,
             contentInsets: UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
@@ -700,11 +809,7 @@ class KeyboardViewController: UIInputViewController {
                 .init(style: .icon(symbolName: "xmark", accessibilityLabel: "Cancel"), action: { [weak self] in
                     self?.switchToMode(.home, height: .small)
                 }),
-                .init(style: .spacer),
-                .init(style: .text(title: "Done", symbolName: nil, isPrimary: false), action: { [weak self] in
-                    // Switch back to the default system keyboard
-                    self?.advanceToNextInputMode()
-                })
+                .init(style: .spacer)
             ],
             showsToggle: true,
             contentInsets: UIEdgeInsets(top: 0, left: 14, bottom: 12, right: 12)
@@ -972,9 +1077,18 @@ class KeyboardViewController: UIInputViewController {
         heightConstraint?.constant = targetHeight
         NSLog("[KeyCo] forceKeyboardRefresh - Mode: \(currentMode), Height: \(currentHeight.rawValue), Setting preferredContentSize to height: \(targetHeight)")
         
+        // Update mode visibility first to ensure correct view is shown
+        updateModeVisibility()
+        
         // Force all views to update their layouts
         view.setNeedsLayout()
         view.layoutIfNeeded()
+        
+        // Explicitly refresh home view layout if in home mode
+        if currentMode == .home {
+            homeView.setNeedsLayout()
+            homeView.layoutIfNeeded()
+        }
         
         // Update container states
         updateContainerExpansionState()
@@ -992,6 +1106,12 @@ class KeyboardViewController: UIInputViewController {
             // Force another layout pass
             self.view.setNeedsLayout()
             self.view.layoutIfNeeded()
+            
+            // Explicitly refresh home view layout again if in home mode
+            if self.currentMode == .home {
+                self.homeView.setNeedsLayout()
+                self.homeView.layoutIfNeeded()
+            }
             
             // Update mode visibility to ensure everything is correct
             self.updateModeVisibility()
@@ -1371,10 +1491,10 @@ class KeyboardViewController: UIInputViewController {
     }
     
     
-    private func regenerateTextWithTone(tone: Float, length: Float, originalText: String? = nil) {
+    private func regenerateTextWithTone(tone: Float, length: Float, originalText: String? = nil, preset: String? = nil) {
         let textToUse = originalText ?? self.originalText
         
-        NSLog("[Write Mode] regenerateTextWithTone called with tone=\(tone), length=\(length), text: '\(textToUse)'")
+        NSLog("[Write Mode] regenerateTextWithTone called with tone=\(tone), length=\(length), preset=\(preset ?? "none"), text: '\(textToUse)'")
         
         guard !textToUse.isEmpty else {
             NSLog("[Write Mode] Cannot regenerate - text is empty")
@@ -1413,8 +1533,14 @@ class KeyboardViewController: UIInputViewController {
             }
         }
         
+        // Apply transformations to amplify extremes before sending to API
+        let transformedTone = transformToneForExtremes(tone)
+        let transformedLength = transformLengthForExtremes(length)
+        
+        NSLog("[Write Mode] Transformed values - tone: \(tone) -> \(transformedTone), length: \(length) -> \(transformedLength)")
+        
         // Use APIClient with retry logic
-        let request = APIClient.RewriteRequest(text: textToUse, tone: tone, length: length)
+        let request = APIClient.RewriteRequest(text: textToUse, tone: transformedTone, length: transformedLength, preset: preset)
         
         APIClient.rewriteText(request: request, onProgress: { [weak self] progressMessage in
             // Show retry progress if retrying (already on main queue from APIClient)
@@ -1458,54 +1584,154 @@ class KeyboardViewController: UIInputViewController {
             }
         }
     }
+    
+    /// Apply a preset transformation to the current text
+    private func applyPreset(_ preset: WritePreset) {
+        let currentText = currentDocumentText()
+        guard !currentText.isEmpty else {
+            NSLog("[Write Mode] Cannot apply preset - text is empty")
+            return
+        }
+        
+        // Store original text for undo
+        originalText = currentText
+        
+        // Map preset to tone/length values and preset identifier
+        let (tone, length, presetId): (Float, Float, String)
+        switch preset {
+        case .fixGrammar:
+            // Neutral tone, keep similar length - only fixes grammar/spelling, respects original text
+            tone = 0.5
+            length = 0.5
+            presetId = "fix_grammar"
+        case .polishWriting:
+            // Neutral tone, keep similar length - polishes text including grammar/spelling improvements
+            tone = 0.5
+            length = 0.5
+            presetId = "polish"
+        case .rephraseAsTweet:
+            // Neutral tone, very brief (tweet length ~280 chars)
+            tone = 0.5
+            length = 0.95
+            presetId = "tweet"
+        }
+        
+        NSLog("[Write Mode] Applying preset: \(preset), presetId=\(presetId), tone=\(tone), length=\(length)")
+        
+        // Call regenerate with preset values and identifier
+        regenerateTextWithTone(tone: tone, length: length, originalText: currentText, preset: presetId)
+    }
 
+    /// Transforms tone value with asymmetric curve: amplifies friendly side more, keeps formal side moderate
+    /// Friendly side (0-0.5): More extreme compression toward 0 for super casual
+    /// Formal side (0.5-1.0): Gentler transformation to avoid extreme formality
+    private func transformToneForExtremes(_ value: Float) -> Float {
+        // Clamp value to [0, 1]
+        let clamped = max(0, min(1, value))
+        
+        if clamped < 0.5 {
+            // Friendly side: use aggressive curve to push toward super casual
+            // pow(value * 2, 0.4) / 2 creates steeper curve for friendly extreme
+            let normalized = clamped * 2.0 // Scale to [0, 1]
+            let transformed = pow(Double(normalized), 0.4) // Aggressive curve
+            return Float(transformed / 2.0) // Scale back to [0, 0.5]
+        } else {
+            // Formal side: use gentler transformation to avoid extreme formality
+            // Linear interpolation with slight compression to keep it moderate
+            let normalized = (clamped - 0.5) * 2.0 // Scale to [0, 1]
+            let transformed = pow(Double(normalized), 0.85) // Gentler curve
+            return Float(0.5 + transformed / 2.0) // Scale back to [0.5, 1.0]
+        }
+    }
+    
+    /// Transforms length value to amplify extremes using exponential curve
+    /// Lower exponent (e.g., 0.6) makes brief extreme more extreme
+    private func transformLengthForExtremes(_ value: Float) -> Float {
+        // Clamp value to [0, 1]
+        let clamped = max(0, min(1, value))
+        // Apply power curve: pow(value, 0.6) makes brief extreme more extreme
+        // For value near 0: stays near 0 (detailed)
+        // For value near 1: stays near 1 (brief extreme)
+        // For middle values: compressed toward extremes
+        return Float(pow(Double(clamped), 0.6))
+    }
+    
     private func describeTone(_ value: Float) -> String {
         // X-axis: 0 = Friendly/Casual (left), 1 = Formal (right)
-        // Use smooth interpolation for more granular control
-        if value < 0.15 {
-            return "very casual and friendly, use contractions like 'you're' and 'I'll', keep it conversational"
-        } else if value < 0.35 {
-            return "friendly and warm, conversational but slightly more polished"
-        } else if value < 0.50 {
-            return "professional yet approachable, balanced between friendly and formal"
-        } else if value < 0.70 {
-            return "professional and clear, use standard business language"
-        } else if value < 0.85 {
-            return "formal and professional, avoid contractions, use proper business etiquette"
+        // Recalibrated: friendly side can be super casual/slang, formal side is quite formal but not extreme
+        if value < 0.1 {
+            return "super casual and unbelievably informal, like texting slang - use casual slang, abbreviations, very relaxed, super friendly, texting speak"
+        } else if value < 0.2 {
+            return "extremely casual and informal, like texting a close friend - use slang, contractions, very relaxed, emojis optional, super friendly"
+        } else if value < 0.3 {
+            return "very casual and friendly, use contractions like 'you're' and 'I'll', keep it conversational and relaxed"
+        } else if value < 0.4 {
+            return "casual and warm, conversational with a friendly tone, use contractions naturally"
+        } else if value < 0.5 {
+            return "friendly and approachable, conversational but slightly more polished, warm tone"
+        } else if value < 0.6 {
+            return "professional yet approachable, balanced between friendly and formal, personable but respectful"
+        } else if value < 0.7 {
+            return "professional and clear, use standard business language, polite and direct"
+        } else if value < 0.8 {
+            return "professional and formal, use proper business language, avoid casual expressions"
+        } else if value < 0.9 {
+            return "formal and professional, avoid contractions, use proper business etiquette, respectful tone"
         } else {
-            return "very formal and professional, use formal language, avoid casual expressions entirely"
+            return "quite formal and professional, use formal language appropriately, avoid casual expressions, but keep it natural and not overly formal"
         }
     }
     
     private func describeLength(_ value: Float) -> String {
         // Y-axis: 0 = Detailed (top), 1 = Brief (bottom)
-        // Provide clearer instructions with specific constraints
-        if value < 0.20 {
-            return "detailed and comprehensive - include all important points and context"
-        } else if value < 0.40 {
-            return "moderately detailed - include key points with some context"
-        } else if value < 0.60 {
-            return "concise and focused - include only essential information"
-        } else if value < 0.80 {
-            return "brief and to-the-point - essential information only, no extra details"
+        // Expanded to 10 ranges for more granular control and distinct positions
+        if value < 0.1 {
+            return "comprehensive and detailed - include all important points with context, but keep it concise (not an essay), well-structured"
+        } else if value < 0.2 {
+            return "detailed and thorough - include all important points and context, provide necessary details"
+        } else if value < 0.3 {
+            return "moderately detailed - include key points with some context and supporting information"
+        } else if value < 0.4 {
+            return "moderately concise - include key points with minimal context, focus on essentials"
+        } else if value < 0.5 {
+            return "concise and focused - include only essential information, skip unnecessary details"
+        } else if value < 0.6 {
+            return "brief and direct - essential information only, no extra context or details"
+        } else if value < 0.7 {
+            return "very brief - minimal words, only the core message, skip all non-essential information"
+        } else if value < 0.8 {
+            return "extremely brief - absolute minimum words, single thought only, strip everything unnecessary"
+        } else if value < 0.9 {
+            return "ultra-brief - absolute minimum, single phrase if possible, remove all filler words"
         } else {
-            return "extremely brief - absolute minimum words, single thought only"
+            return "ultra-brief - absolute minimum words, single phrase or word if possible, maximum compression"
         }
     }
     
     /// Returns (maxWords, maxSentences) based on length value
     private func getLengthConstraints(_ value: Float) -> (Int, Int) {
         // Y-axis: 0 = Detailed (top), 1 = Brief (bottom)
-        if value < 0.20 {
+        // Expanded to 10 ranges matching describeLength() for consistency
+        if value < 0.1 {
+            return (120, 4)  // Comprehensive: up to 120 words, 4 sentences
+        } else if value < 0.2 {
             return (100, 3)  // Detailed: up to 100 words, 3 sentences
-        } else if value < 0.40 {
-            return (60, 2)   // Moderately detailed: up to 60 words, 2 sentences
-        } else if value < 0.60 {
-            return (40, 2)   // Concise: up to 40 words, 2 sentences
-        } else if value < 0.80 {
-            return (25, 1)   // Brief: up to 25 words, 1 sentence
+        } else if value < 0.3 {
+            return (75, 3)   // Moderately detailed: up to 75 words, 3 sentences
+        } else if value < 0.4 {
+            return (60, 2)   // Moderately concise: up to 60 words, 2 sentences
+        } else if value < 0.5 {
+            return (45, 2)   // Concise: up to 45 words, 2 sentences
+        } else if value < 0.6 {
+            return (35, 2)   // Brief: up to 35 words, 2 sentences
+        } else if value < 0.7 {
+            return (25, 1)   // Very brief: up to 25 words, 1 sentence
+        } else if value < 0.8 {
+            return (18, 1)   // Extremely brief: up to 18 words, 1 sentence
+        } else if value < 0.9 {
+            return (12, 1)   // Ultra-brief: up to 12 words, 1 sentence
         } else {
-            return (15, 1)   // Extremely brief: up to 15 words, 1 sentence
+            return (8, 1)    // Ultra-brief extreme: up to 8 words, 1 sentence
         }
     }
     
