@@ -78,7 +78,7 @@ struct HomeView: View {
                                 Spacer()
                                 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("Paste")
+                                    Text("Snippets")
                                         .font(.headline)
                                         .foregroundStyle(Color(uiColor: .label))
                                     Text("Manage snippets")

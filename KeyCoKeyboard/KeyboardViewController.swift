@@ -471,7 +471,7 @@ class KeyboardViewController: UIInputViewController {
         writeButton.addTarget(self, action: #selector(writeTapped), for: .touchUpInside)
         homeView.addSubview(writeButton)
 
-        let snippetsButton = createActionButton(title: "Paste", color: tileColor)
+        let snippetsButton = createActionButton(title: "Snippets", color: tileColor)
         snippetsButton.addTarget(self, action: #selector(snippetsTapped), for: .touchUpInside)
         homeView.addSubview(snippetsButton)
 

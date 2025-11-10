@@ -46,7 +46,7 @@ final class SnippetsContentView: UIView {
 
         headerLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         headerLabel.textColor = .systemGray
-        headerLabel.text = "PASTE"
+        headerLabel.text = "SNIPPETS"
         headerLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(headerLabel)
 

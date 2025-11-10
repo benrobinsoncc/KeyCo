@@ -33,7 +33,7 @@ struct SnippetsManagementView: View {
                 .onDelete(perform: deleteSnippets)
                 .onMove(perform: moveSnippets)
             }
-            .navigationTitle("Paste")
+            .navigationTitle("Snippets")
             .navigationBarTitleDisplayMode(.inline)
             .contentMargins(.top, 4, for: .scrollContent)
             .toolbar {

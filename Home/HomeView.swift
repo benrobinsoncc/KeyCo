@@ -11,6 +11,8 @@ struct HomeView: View {
     @State private var showingKeyboardSetup = false
     @State private var showingMailComposer = false
     @AppStorage("isShowingOnboardingFromHome") private var isShowingOnboardingFromHome = false
+    @AppStorage("onboarding_current_step") private var onboardingCurrentStep: String = "splash"
+    @AppStorage("onboarding_has_opened_settings") private var onboardingHasOpenedSettings: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -31,7 +33,7 @@ struct HomeView: View {
                                         .fill(Color.gray.opacity(0.15))
                                         .frame(width: 44, height: 44)
                                     
-                                    Image(systemName: isKeyboardActive ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                                    Image(systemName: "keyboard.fill")
                                         .font(.system(size: 20, weight: .medium))
                                         .foregroundStyle(Color(uiColor: .label))
                                 }
@@ -78,7 +80,7 @@ struct HomeView: View {
                                 Spacer()
                                 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("Paste")
+                                    Text("Snippets")
                                         .font(.headline)
                                         .foregroundStyle(Color(uiColor: .label))
                                     Text("Manage snippets")
@@ -110,6 +112,9 @@ struct HomeView: View {
                         let generator = UIImpactFeedbackGenerator(style: .light)
                         generator.prepare()
                         generator.impactOccurred()
+                        // Reset onboarding state to ensure it starts from the first step
+                        onboardingCurrentStep = "splash"
+                        onboardingHasOpenedSettings = false
                         showingOnboarding = true
                     } label: {
                         Image(systemName: "sparkles")
