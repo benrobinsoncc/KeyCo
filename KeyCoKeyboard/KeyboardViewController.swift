@@ -1511,76 +1511,81 @@ class KeyboardViewController: UIInputViewController {
         loadingTimeoutTimer?.invalidate()
         loadingTimeoutTimer = nil
         
-        NSLog("[Write Mode] Starting AI regeneration for text: '\(textToUse)'")
-        isWriting = true
-        
-        // Show spinner in the selector knob
-        DispatchQueue.main.async { [weak self] in
-            self?.toneMapView?.setLoading(true)
-            
-            // Hide status label - only show errors
-            self?.messagePreviewLabel?.isHidden = true
-            
-            // Set a timeout to ensure loading state is cleared if callback never fires
-            // Extended timeout to account for retries (max 3 retries with delays)
-            self?.loadingTimeoutTimer?.invalidate()
-            self?.loadingTimeoutTimer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: false) { [weak self] _ in
-                NSLog("[Write Mode] TIMEOUT: API call timed out, clearing loading state")
-                self?.toneMapView?.setLoading(false)
-                self?.isWriting = false
-                self?.currentTask = nil
-                self?.handleWriteError("Request timed out. Please try again.")
-            }
-        }
-        
-        // Apply transformations to amplify extremes before sending to API
-        let transformedTone = transformToneForExtremes(tone)
-        let transformedLength = transformLengthForExtremes(length)
-        
-        NSLog("[Write Mode] Transformed values - tone: \(tone) -> \(transformedTone), length: \(length) -> \(transformedLength)")
-        
-        // Use APIClient with retry logic
-        let request = APIClient.RewriteRequest(text: textToUse, tone: transformedTone, length: transformedLength, preset: preset)
-        
-        APIClient.rewriteText(request: request, onProgress: { [weak self] progressMessage in
-            // Show retry progress if retrying (already on main queue from APIClient)
-            if progressMessage.contains("Retrying") {
-                self?.messagePreviewLabel?.text = progressMessage
-                self?.messagePreviewLabel?.textColor = .systemOrange
-                self?.messagePreviewLabel?.isHidden = false
-            } else if progressMessage.contains("Service temporarily unavailable") {
-                self?.messagePreviewLabel?.text = progressMessage
-                self?.messagePreviewLabel?.textColor = .systemOrange
-                self?.messagePreviewLabel?.isHidden = false
-            }
-        }) { [weak self] result in
-            // Cancel timeout timer since we got a response
-            self?.loadingTimeoutTimer?.invalidate()
-            self?.loadingTimeoutTimer = nil
-            
-            // Clear the current task reference
-            self?.currentTask = nil
-            
+        // Fast preflight: check network only (don't gate on backend health)
+        APIClient.checkNetworkConnectivity { [weak self] isOnline in
             guard let self = self else { return }
             
-            self.isWriting = false
+            if !isOnline {
+                DispatchQueue.main.async {
+                    self.toneMapView?.setLoading(false)
+                    self.isWriting = false
+                    self.handleWriteError("No network or Full Access disabled. Enable in Settings → Keyboard Copilot → Allow Full Access.")
+                }
+                return
+            }
             
-            // Hide spinner in selector knob
-            self.toneMapView?.setLoading(false)
+            NSLog("[Write Mode] Starting AI regeneration for text: '\(textToUse)'")
+            self.isWriting = true
             
-            switch result {
-            case .success(let response):
-                NSLog("[Write Mode] Got AI response: '\(response.text)'")
+            // Show spinner in the selector knob
+            DispatchQueue.main.async { [weak self] in
+                self?.toneMapView?.setLoading(true)
                 
-                // Replace text in the text field
-                self.replaceTextFieldContent(with: response.text)
+                // Hide status label - only show errors
+                self?.messagePreviewLabel?.isHidden = true
                 
-                // Ensure label stays hidden on success
-                self.messagePreviewLabel?.isHidden = true
+                // Set a timeout to ensure loading state is cleared if callback never fires
+                // Extended timeout to account for retries (max 3 retries with delays)
+                self?.loadingTimeoutTimer?.invalidate()
+                self?.loadingTimeoutTimer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: false) { [weak self] _ in
+                    NSLog("[Write Mode] TIMEOUT: API call timed out, clearing loading state")
+                    self?.toneMapView?.setLoading(false)
+                    self?.isWriting = false
+                    self?.currentTask = nil
+                    self?.handleWriteError("Request timed out. Please try again.")
+                }
+            }
+            
+            // Apply transformations to amplify extremes before sending to API
+            let transformedTone = self.transformToneForExtremes(tone)
+            let transformedLength = self.transformLengthForExtremes(length)
+            
+            NSLog("[Write Mode] Transformed values - tone: \(tone) -> \(transformedTone), length: \(length) -> \(transformedLength)")
+            
+            // Use APIClient with retry logic
+            let request = APIClient.RewriteRequest(text: textToUse, tone: transformedTone, length: transformedLength, preset: preset)
+            
+            APIClient.rewriteText(request: request, onProgress: { [weak self] _ in
+                // Silent retries, no progress UI
+            }) { [weak self] result in
+                // Cancel timeout timer since we got a response
+                self?.loadingTimeoutTimer?.invalidate()
+                self?.loadingTimeoutTimer = nil
                 
-            case .failure(let error):
-                NSLog("[Write Mode] API Error: \(error.localizedDescription ?? "Unknown error")")
-                self.handleWriteError(error.localizedDescription ?? "Unknown error occurred")
+                // Clear the current task reference
+                self?.currentTask = nil
+                
+                guard let self = self else { return }
+                
+                self.isWriting = false
+                
+                // Hide spinner in selector knob
+                self.toneMapView?.setLoading(false)
+                
+                switch result {
+                case .success(let response):
+                    NSLog("[Write Mode] Got AI response: '\(response.text)'")
+                    
+                    // Replace text in the text field
+                    self.replaceTextFieldContent(with: response.text)
+                    
+                    // Ensure label stays hidden on success
+                    self.messagePreviewLabel?.isHidden = true
+                    
+                case .failure(let error):
+                    NSLog("[Write Mode] API Error: \(error.localizedDescription ?? "Unknown error")")
+                    self.handleWriteError(error.localizedDescription ?? "Unknown error occurred")
+                }
             }
         }
     }
@@ -1834,26 +1839,35 @@ class KeyboardViewController: UIInputViewController {
         }
 
         chatgptContentView.responseText = "Loading..."
-
-        // Use APIClient with retry logic
-        let request = APIClient.ChatRequest(query: query)
         
-        APIClient.chatQuery(request: request, onProgress: { [weak self] progressMessage in
-            // Show retry progress if retrying (already on main queue from APIClient)
-            if progressMessage.contains("Retrying") || progressMessage.contains("Service temporarily unavailable") {
-                self?.chatgptContentView.responseText = progressMessage
-            }
-        }) { [weak self] result in
+        // Fast preflight: check network only (don't gate on backend health)
+        APIClient.checkNetworkConnectivity { [weak self] isOnline in
             guard let self = self else { return }
             
-            switch result {
-            case .success(let response):
-                self.chatgptContentView.responseText = response.text
+            if !isOnline {
+                DispatchQueue.main.async {
+                    self.chatgptContentView.responseText = "No network or Full Access disabled. Enable in Settings → Keyboard Copilot → Allow Full Access."
+                }
+                return
+            }
+            
+            // Use APIClient with retry logic
+            let request = APIClient.ChatRequest(query: query)
+            
+            APIClient.chatQuery(request: request, onProgress: { [weak self] _ in
+                // Silent retries, no progress UI
+            }) { [weak self] result in
+                guard let self = self else { return }
                 
-            case .failure(let error):
-                let errorMessage = error.localizedDescription ?? "Unknown error occurred"
-                self.chatgptContentView.responseText = "Error: \(errorMessage)"
-                NSLog("[KeyCo] ChatGPT API error: %@", errorMessage)
+                switch result {
+                case .success(let response):
+                    self.chatgptContentView.responseText = response.text
+                    
+                case .failure(let error):
+                    let errorMessage = error.localizedDescription ?? "Unknown error occurred"
+                    self.chatgptContentView.responseText = "Error: \(errorMessage)"
+                    NSLog("[KeyCo] ChatGPT API error: %@", errorMessage)
+                }
             }
         }
     }

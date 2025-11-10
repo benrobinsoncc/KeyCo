@@ -18,6 +18,26 @@ final class APIClient {
         static let maxRequestAge: TimeInterval = 300.0 // 5 minutes - deduplicate requests
     }
     
+    // MARK: - URLSession Configuration
+    
+    /// Properly configured URLSession for keyboard extensions
+    /// Keyboard extensions require explicit configuration for network requests
+    /// Using ephemeral configuration for better reliability in extensions
+    private static var urlSession: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = Config.requestTimeout
+        configuration.timeoutIntervalForResource = Config.requestTimeout * 2
+        configuration.waitsForConnectivity = false // Don't wait - fail fast if no connectivity
+        configuration.allowsCellularAccess = true
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData // Always fetch fresh data
+        configuration.httpShouldSetCookies = false
+        configuration.httpCookieAcceptPolicy = .never
+        // Use background queue - we dispatch to main in completion handlers
+        let queue = OperationQueue()
+        queue.maxConcurrentOperationCount = 1
+        return URLSession(configuration: configuration, delegate: nil, delegateQueue: queue)
+    }()
+    
     // MARK: - Circuit Breaker State
     
     private enum CircuitBreakerState {
@@ -146,18 +166,11 @@ final class APIClient {
     
     /// Check backend health status (for proactive checking)
     static func checkBackendStatus(completion: @escaping (Bool, String?) -> Void) {
-        checkNetworkConnectivity { isConnected in
-            guard isConnected else {
-                completion(false, "No internet connection")
-                return
-            }
-            
-            checkBackendHealth { isHealthy in
-                if isHealthy {
-                    completion(true, nil)
-                } else {
-                    completion(false, "Backend service unavailable")
-                }
+        checkBackendHealth { isHealthy in
+            if isHealthy {
+                completion(true, nil)
+            } else {
+                completion(false, "Backend service unavailable")
             }
         }
     }
@@ -180,35 +193,39 @@ final class APIClient {
             return
         }
         
-        // Check network connectivity before making request
-        checkNetworkConnectivity { isConnected in
-            guard isConnected else {
+        // Quick backend health check (only if circuit breaker is open/half-open)
+        let circuitState = getCircuitBreakerState()
+        NSLog("[APIClient] Rewrite request - circuit breaker state: \(circuitState)")
+        
+        if case .open = circuitState {
+            // Circuit breaker is open - check health first with timeout
+            NSLog("[APIClient] Circuit breaker is open, checking backend health...")
+            let healthCheckTimeout = DispatchWorkItem {
+                NSLog("[APIClient] Health check timed out, failing request")
                 DispatchQueue.main.async {
-                    completion(.failure(.noInternetConnection))
+                    completion(.failure(.backendUnavailable))
                 }
-                return
             }
+            DispatchQueue.main.asyncAfter(deadline: .now() + Config.healthCheckTimeout + 1.0, execute: healthCheckTimeout)
             
-            // Quick backend health check (only if circuit breaker is open/half-open)
-            let circuitState = getCircuitBreakerState()
-            if case .open = circuitState {
-                // Circuit breaker is open - check health first
-                checkBackendHealth { isHealthy in
-                    if isHealthy {
-                        // Backend recovered - reset circuit breaker and proceed
-                        resetCircuitBreaker()
-                        self.performRewriteRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
-                    } else {
-                        // Still down - fail fast with clear message
-                        DispatchQueue.main.async {
-                            completion(.failure(.backendUnavailable))
-                        }
+            checkBackendHealth { isHealthy in
+                healthCheckTimeout.cancel()
+                NSLog("[APIClient] Health check completed: \(isHealthy)")
+                if isHealthy {
+                    // Backend recovered - reset circuit breaker and proceed
+                    resetCircuitBreaker()
+                    self.performRewriteRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
+                } else {
+                    // Still down - fail fast with clear message
+                    DispatchQueue.main.async {
+                        completion(.failure(.backendUnavailable))
                     }
                 }
-            } else {
-                // Circuit breaker is closed - proceed normally
-                self.performRewriteRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
             }
+        } else {
+            // Circuit breaker is closed - proceed normally
+            NSLog("[APIClient] Circuit breaker is closed, proceeding with request")
+            self.performRewriteRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
         }
     }
     
@@ -218,36 +235,9 @@ final class APIClient {
         onProgress: ((String) -> Void)?,
         completion: @escaping (Result<RewriteResponse, APIError>) -> Void
     ) {
-        // Check circuit breaker state
-        let circuitState = getCircuitBreakerState()
-        switch circuitState {
-        case .open:
-            // Fail fast - don't make user wait
-            DispatchQueue.main.async {
-                completion(.failure(.backendUnavailable))
-            }
-            return
-            
-        case .halfOpen:
-            // In half-open state, check health quickly before proceeding
-            checkBackendHealth { isHealthy in
-                if isHealthy {
-                    // Backend is healthy, proceed with request
-                    self.executeRewriteRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
-                } else {
-                    // Still unhealthy, back to open state but fail fast
-                    self.setCircuitBreakerState(.open(openUntil: Date().addingTimeInterval(Config.circuitBreakerCooldown)))
-                    DispatchQueue.main.async {
-                        completion(.failure(.backendUnavailable))
-                    }
-                }
-            }
-            return
-            
-        case .closed:
-            // Circuit breaker is closed, proceed normally
-            executeRewriteRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
-        }
+        // Circuit breaker already checked in rewriteText, proceed directly
+        NSLog("[APIClient] performRewriteRequest called, executing request...")
+        executeRewriteRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
     }
     
     private static func executeRewriteRequest(
@@ -271,13 +261,7 @@ final class APIClient {
             return
         }
         
-        // Show retry status if retrying
-        if retryAttempt > 0 {
-            DispatchQueue.main.async {
-                onProgress?("Retrying... (\(retryAttempt)/\(Config.maxRetries))")
-            }
-        }
-        
+        // Retries happen silently - don't show progress to user
         // Make API call
         guard let url = BackendConfig.rewriteURL else {
             DispatchQueue.main.async {
@@ -315,8 +299,16 @@ final class APIClient {
         // Log request (sanitized)
         NSLog("[APIClient] Rewrite request - tone: \(request.tone), length: \(request.length), text length: \(request.text.count)")
         NSLog("[APIClient] Request URL: \(url.absoluteString)")
+        NSLog("[APIClient] Starting rewrite request...")
+        NSLog("[APIClient] URLSession: \(urlSession)")
+        NSLog("[APIClient] URLRequest: \(urlRequest)")
         
-        let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+        let task = urlSession.dataTask(with: urlRequest) { data, response, error in
+            NSLog("[APIClient] Rewrite request callback received - Thread: \(Thread.current)")
+            NSLog("[APIClient] Has error: \(error != nil), Has response: \(response != nil), Has data: \(data != nil)")
+            if let error = error {
+                NSLog("[APIClient] Error details: \(error.localizedDescription)")
+            }
             // Check for network errors
             if let error = error {
                 let nsError = error as NSError
@@ -430,7 +422,10 @@ final class APIClient {
             }
         }
         
+        NSLog("[APIClient] Resuming rewrite task... - Task state: \(task.state.rawValue)")
+        NSLog("[APIClient] Current thread: \(Thread.current)")
         task.resume()
+        NSLog("[APIClient] Task resumed - State after resume: \(task.state.rawValue)")
     }
     
     // MARK: - Chat Query API
@@ -451,35 +446,39 @@ final class APIClient {
             return
         }
         
-        // Check network connectivity before making request
-        checkNetworkConnectivity { isConnected in
-            guard isConnected else {
+        // Quick backend health check (only if circuit breaker is open/half-open)
+        let circuitState = getCircuitBreakerState()
+        NSLog("[APIClient] Chat request - circuit breaker state: \(circuitState)")
+        
+        if case .open = circuitState {
+            // Circuit breaker is open - check health first with timeout
+            NSLog("[APIClient] Circuit breaker is open, checking backend health...")
+            let healthCheckTimeout = DispatchWorkItem {
+                NSLog("[APIClient] Health check timed out, failing request")
                 DispatchQueue.main.async {
-                    completion(.failure(.noInternetConnection))
+                    completion(.failure(.backendUnavailable))
                 }
-                return
             }
+            DispatchQueue.main.asyncAfter(deadline: .now() + Config.healthCheckTimeout + 1.0, execute: healthCheckTimeout)
             
-            // Quick backend health check (only if circuit breaker is open/half-open)
-            let circuitState = getCircuitBreakerState()
-            if case .open = circuitState {
-                // Circuit breaker is open - check health first
-                checkBackendHealth { isHealthy in
-                    if isHealthy {
-                        // Backend recovered - reset circuit breaker and proceed
-                        resetCircuitBreaker()
-                        self.performChatRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
-                    } else {
-                        // Still down - fail fast with clear message
-                        DispatchQueue.main.async {
-                            completion(.failure(.backendUnavailable))
-                        }
+            checkBackendHealth { isHealthy in
+                healthCheckTimeout.cancel()
+                NSLog("[APIClient] Health check completed: \(isHealthy)")
+                if isHealthy {
+                    // Backend recovered - reset circuit breaker and proceed
+                    resetCircuitBreaker()
+                    self.performChatRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
+                } else {
+                    // Still down - fail fast with clear message
+                    DispatchQueue.main.async {
+                        completion(.failure(.backendUnavailable))
                     }
                 }
-            } else {
-                // Circuit breaker is closed - proceed normally
-                self.performChatRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
             }
+        } else {
+            // Circuit breaker is closed - proceed normally
+            NSLog("[APIClient] Circuit breaker is closed, proceeding with request")
+            self.performChatRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
         }
     }
     
@@ -489,36 +488,9 @@ final class APIClient {
         onProgress: ((String) -> Void)?,
         completion: @escaping (Result<ChatResponse, APIError>) -> Void
     ) {
-        // Check circuit breaker state
-        let circuitState = getCircuitBreakerState()
-        switch circuitState {
-        case .open:
-            // Fail fast - don't make user wait
-            DispatchQueue.main.async {
-                completion(.failure(.backendUnavailable))
-            }
-            return
-            
-        case .halfOpen:
-            // In half-open state, check health quickly before proceeding
-            checkBackendHealth { isHealthy in
-                if isHealthy {
-                    // Backend is healthy, proceed with request
-                    self.executeChatRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
-                } else {
-                    // Still unhealthy, back to open state but fail fast
-                    self.setCircuitBreakerState(.open(openUntil: Date().addingTimeInterval(Config.circuitBreakerCooldown)))
-                    DispatchQueue.main.async {
-                        completion(.failure(.backendUnavailable))
-                    }
-                }
-            }
-            return
-            
-        case .closed:
-            // Circuit breaker is closed, proceed normally
-            executeChatRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
-        }
+        // Circuit breaker already checked in chatQuery, proceed directly
+        NSLog("[APIClient] performChatRequest called, executing request...")
+        executeChatRequest(request: request, retryAttempt: retryAttempt, onProgress: onProgress, completion: completion)
     }
     
     private static func executeChatRequest(
@@ -535,13 +507,7 @@ final class APIClient {
             return
         }
         
-        // Show retry status if retrying
-        if retryAttempt > 0 {
-            DispatchQueue.main.async {
-                onProgress?("Retrying... (\(retryAttempt)/\(Config.maxRetries))")
-            }
-        }
-        
+        // Retries happen silently - don't show progress to user
         // Make API call
         guard let url = BackendConfig.chatURL else {
             DispatchQueue.main.async {
@@ -571,8 +537,16 @@ final class APIClient {
         // Log request (sanitized)
         NSLog("[APIClient] Chat request - query length: \(request.query.count)")
         NSLog("[APIClient] Request URL: \(url.absoluteString)")
+        NSLog("[APIClient] Starting chat request...")
+        NSLog("[APIClient] URLSession: \(urlSession)")
+        NSLog("[APIClient] URLRequest: \(urlRequest)")
         
-        let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+        let task = urlSession.dataTask(with: urlRequest) { data, response, error in
+            NSLog("[APIClient] Chat request callback received - Thread: \(Thread.current)")
+            NSLog("[APIClient] Has error: \(error != nil), Has response: \(response != nil), Has data: \(data != nil)")
+            if let error = error {
+                NSLog("[APIClient] Error details: \(error.localizedDescription)")
+            }
             // Check for network errors
             if let error = error {
                 let nsError = error as NSError
@@ -686,7 +660,10 @@ final class APIClient {
             }
         }
         
+        NSLog("[APIClient] Resuming chat task... - Task state: \(task.state.rawValue)")
+        NSLog("[APIClient] Current thread: \(Thread.current)")
         task.resume()
+        NSLog("[APIClient] Task resumed - State after resume: \(task.state.rawValue)")
     }
     
     // MARK: - Retry Logic
@@ -857,30 +834,29 @@ final class APIClient {
         request.httpMethod = "GET"
         request.timeoutInterval = Config.healthCheckTimeout
         
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        let task = urlSession.dataTask(with: request) { data, response, error in
             guard error == nil,
-                  let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
+                  let httpResponse = response as? HTTPURLResponse else {
+                NSLog("[APIClient] Health check failed: \(error?.localizedDescription ?? "unknown error")")
                 completion(false)
                 return
             }
             
-            // Parse health check response
-            if let data = data,
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let status = json["status"] as? String,
-               status == "healthy" {
+            // Treat any HTTP 200 as healthy to avoid false negatives due to response body shape
+            if httpResponse.statusCode == 200 {
                 completion(true)
-            } else {
-                completion(false)
+                return
             }
+            
+            NSLog("[APIClient] Health check non-200 status: \(httpResponse.statusCode)")
+            completion(false)
         }
         
         task.resume()
     }
     
     /// Check if network is available before making request
-    private static func checkNetworkConnectivity(completion: @escaping (Bool) -> Void) {
+    static func checkNetworkConnectivity(completion: @escaping (Bool) -> Void) {
         // Quick check using Reachability-like approach
         guard let url = URL(string: "https://www.apple.com") else {
             completion(false)
@@ -891,7 +867,8 @@ final class APIClient {
         request.httpMethod = "HEAD"
         request.timeoutInterval = Config.networkCheckTimeout
         
-        let task = URLSession.shared.dataTask(with: request) { _, response, error in
+        // Use the same URLSession config as the extension to reflect Full Access/network availability
+        let task = urlSession.dataTask(with: request) { _, response, error in
             let isAvailable = error == nil && (response as? HTTPURLResponse)?.statusCode == 200
             completion(isAvailable)
         }
