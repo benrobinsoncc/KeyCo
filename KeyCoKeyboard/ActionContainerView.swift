@@ -339,6 +339,18 @@ final class ActionContainerView: UIView {
             }
 
             buttonStack.addArrangedSubview(button)
+            
+            // For buttons with icons (like Presets), ensure they size to fit content after being added
+            if case .text(_, let symbolName, _) = configuration.style, symbolName != nil {
+                // Force the button to recalculate its size after being added to the view hierarchy
+                DispatchQueue.main.async { [weak button] in
+                    guard let button = button else { return }
+                    button.invalidateIntrinsicContentSize()
+                    button.superview?.setNeedsLayout()
+                    button.superview?.layoutIfNeeded()
+                }
+            }
+            
             previousWasFlexibleSpacer = false
         }
     }
@@ -404,9 +416,10 @@ final class ActionContainerView: UIView {
         button.layer.cornerCurve = .continuous
         button.clipsToBounds = true
         button.titleLabel?.font = .systemFont(ofSize: isPrimary ? 15 : 13, weight: isPrimary ? .semibold : .medium)
-        // For buttons with icons, use word wrapping to prevent clipping (button will expand to fit)
+        // For buttons with icons, prevent truncation - button will expand to fit content
+        // Use byTruncatingTail but with required compression resistance, button will expand before truncating
         // For regular buttons, allow truncation
-        button.titleLabel?.lineBreakMode = symbolName != nil ? .byWordWrapping : .byTruncatingTail
+        button.titleLabel?.lineBreakMode = .byTruncatingTail
         button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
         button.setTitle(title, for: .normal)
         
@@ -433,11 +446,24 @@ final class ActionContainerView: UIView {
             } : .label
             if symbolName == "arrowtriangle.down.fill" {
                 button.semanticContentAttribute = .forceRightToLeft
-                // Padding for Presets button (16pt on left and right)
+                // Padding for Presets button (16pt on left and right) - button will size dynamically to content
                 button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
-                // Space between label and icon (6pt on each side = 12pt total)
+                // Space between label and icon (6pt spacing)
                 button.imageEdgeInsets = UIEdgeInsets(top: 0, left: 6, bottom: 0, right: 0)
                 button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 6)
+                
+                // Calculate minimum width dynamically based on actual text size
+                // This ensures the button fits the content and works with accessibility font sizes
+                // Use the same font that was set for the button (13pt medium for non-primary buttons)
+                let font = UIFont.systemFont(ofSize: isPrimary ? 15 : 13, weight: isPrimary ? .semibold : .medium)
+                let textSize = (title as NSString).size(withAttributes: [.font: font])
+                let iconWidth: CGFloat = 7 // arrowtriangle.down.fill icon size
+                let spacing: CGFloat = 6 // spacing between text and icon
+                let padding: CGFloat = 16 + 16 // left + right padding
+                let minWidth = textSize.width + iconWidth + spacing + padding
+                // Set minimum width constraint to ensure full text is visible
+                // This dynamically adapts to the actual text width and font size
+                button.widthAnchor.constraint(greaterThanOrEqualToConstant: minWidth).isActive = true
             } else {
                 button.imageEdgeInsets = UIEdgeInsets(top: 0, left: -4, bottom: 0, right: 4)
                 button.semanticContentAttribute = .forceLeftToRight
@@ -458,11 +484,15 @@ final class ActionContainerView: UIView {
             button.setTitleColor(.label, for: .normal)
         }
 
-        // For buttons with icons, allow them to expand to fit content naturally
+        // For buttons with icons, ensure they size to fit their content and never shrink
         if symbolName != nil {
-            // Allow button to grow to fit content, but never shrink below content size
-            // Low hugging priority = button can expand, required compression resistance = won't shrink
-            button.setContentHuggingPriority(.defaultLow, for: .horizontal)
+            // For Presets button, we use a calculated minimum width constraint
+            // So we can use defaultLow hugging priority to allow expansion if needed
+            // Required compression resistance = button won't shrink below content size
+            // This ensures buttons like "Presets" display their full text
+            let isPresetsButton = symbolName == "arrowtriangle.down.fill"
+            let huggingPriority: UILayoutPriority = isPresetsButton ? .defaultLow : .required
+            button.setContentHuggingPriority(huggingPriority, for: .horizontal)
             button.setContentCompressionResistancePriority(.required, for: .horizontal)
             // Ensure title label can expand to show full text
             // Set a very large preferredMaxLayoutWidth so it doesn't constrain the text
@@ -477,6 +507,16 @@ final class ActionContainerView: UIView {
             button.setContentHuggingPriority(.required, for: .horizontal)
             button.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
             button.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
+        }
+        
+        // Ensure button recalculates its intrinsic content size after all properties are set
+        // This is especially important for buttons with icons and custom insets like the Presets button
+        // For buttons with icons, ensure the intrinsic content size accounts for all insets and content
+        if symbolName != nil {
+            button.invalidateIntrinsicContentSize()
+            // Force the button to calculate its size based on actual content
+            // This ensures it works with accessibility font sizes and translations
+            button.setNeedsLayout()
         }
         
         return button
