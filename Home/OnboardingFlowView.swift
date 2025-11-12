@@ -4,7 +4,7 @@ import UIKit
 struct PrimaryCTAButton: View {
     let title: String
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: {
             let generator = UIImpactFeedbackGenerator(style: .light)
@@ -21,6 +21,24 @@ struct PrimaryCTAButton: View {
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+    }
+}
+
+struct CircleBackButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(Color(uiColor: .systemGray5))
+                    .frame(width: 32, height: 32)
+
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(Color(uiColor: .label))
+            }
+        }
     }
 }
 
@@ -192,12 +210,10 @@ struct OnboardingFlowView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .navigationBarLeading) {
-                            Button {
+                            CircleBackButton {
                                 withAnimation {
                                     setCurrentStep(.splash)
                                 }
-                            } label: {
-                                Image(systemName: "chevron.left")
                             }
                         }
                         ToolbarItem(placement: .navigationBarTrailing) {
@@ -221,12 +237,10 @@ struct OnboardingFlowView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .navigationBarLeading) {
-                            Button {
+                            CircleBackButton {
                                 withAnimation {
                                     setCurrentStep(.setup)
                                 }
-                            } label: {
-                                Image(systemName: "chevron.left")
                             }
                         }
                     }
